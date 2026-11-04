@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Cover: the daily NFL ball-knowledge game. Five wagered rounds a day, real slate picks on game days, and a Ball Knowledge Score.">
+<meta property="og:title" content="Cover — daily NFL ball knowledge"><meta property="og:description" content="Five rounds. 30 seconds each. Wager on what you know.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
+<title>Cover</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// ===== Cover website backend: Supabase (leaderboard + saved picks) =====
+// Fill these two values from Supabase > Project Settings > API. The anon key is meant to be public.
+window.COVER_CONFIG = { supabaseUrl: "%%SB_URL%%", supabaseKey: "%%SB_KEY%%" };
+(function(){
+  const cfg=window.COVER_CONFIG;
+  if(!cfg.supabaseUrl||cfg.supabaseUrl.indexOf("%%")===0||!window.supabase) return;
+  const sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
+  let uidP=null;
+  const getUid=()=>uidP||(uidP=(async()=>{
+    let {data:{session}}=await sb.auth.getSession();
+    if(!session){ const r=await sb.auth.signInAnonymously(); if(r.error) throw r.error; session=r.data.session; }
+    return session.user.id; })());
+  const doc=id=>({
+    async get(){ const {data,error}=await sb.from("slips").select("data").eq("id",id).maybeSingle(); if(error) throw error; return {exists:!!data,data:()=>data&&data.data}; },
+    async set(obj){ const {error}=await sb.from("slips").upsert({id,handle:String(obj.handle||"").slice(0,24),data:obj,updated:new Date().toISOString()}); if(error) throw error; }
+  });
+  const coll={doc,limit(n){ return {onSnapshot(cb,err){
+    const load=async()=>{ const {data,error}=await sb.from("slips").select("id,data").order("updated",{ascending:false}).limit(n);
+      if(error){ if(err) err(error); return; } cb({docs:data.map(r=>({id:r.id,exists:true,data:()=>r.data}))}); };
+    load(); const iv=setInterval(load,20000); return ()=>clearInterval(iv); }}; }};
+  window.claude={use:async name=>name==="db"?{collection:()=>coll}:name==="user"?{id:getUid}:null};
+})();
+</script>
+</head>
+<body>
+<style>
+/* Layout: stadium scoreboard with the Ball Knowledge Score, then the Daily Five (and on game days the Slate), then the leaderboard */
+:root{
+  --bg:#E9ECE4; --slip:#FFFFFF; --ink:#141A15; --muted:#5A645C; --line:#D3D8CD;
+  --turf:#1E6B3B; --turf-ink:#F4F7F1; --gold:#9A6F00; --gold-bg:#F3D27A; --gold-ink:#2B1F00; --red:#C2352E; --blue:#2F5FB8; --amber:#B7791F;
+  --board:#132018; --board-ink:#F1F4EE; --board-dim:#8FA394; --board-line:#2E3D33; --board-gold:#EDBC45;
+  --display:"Big Shoulders Display", "Impact", "Arial Narrow", sans-serif;
+  --body:"Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0D130F; --slip:#151D17; --ink:#E9EEE8; --muted:#97A59A; --line:#27332A;
+  --turf:#3E9E62; --turf-ink:#07120A; --gold:#EDBC45; --gold-bg:#EDBC45; --gold-ink:#251A00; --red:#EE6B62; --blue:#7FA6F0; --amber:#E9B04F;
+  --board:#060A07; --board-ink:#F1F4EE; --board-dim:#7F9384; --board-line:#22302A; --board-gold:#EDBC45; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0D130F; --slip:#151D17; --ink:#E9EEE8; --muted:#97A59A; --line:#27332A;
+  --turf:#3E9E62; --turf-ink:#07120A; --gold:#EDBC45; --gold-bg:#EDBC45; --gold-ink:#251A00; --red:#EE6B62; --blue:#7FA6F0; --amber:#E9B04F;
+  --board:#060A07; --board-ink:#F1F4EE; --board-dim:#7F9384; --board-line:#22302A; --board-gold:#EDBC45; color-scheme:dark }
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:18px 56px}
+.wrap{max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.board{background:var(--board);color:var(--board-ink);border-radius:16px;padding:16px;display:grid;gap:12px;position:relative;overflow:hidden}
+.board>*:not(.field){position:relative;z-index:1}
+.field{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.field .stripe{fill:#FFFFFF;opacity:.025}
+.field .yl{stroke:#FFFFFF;opacity:.07;stroke-width:2}
+.field .hash{stroke:#FFFFFF;opacity:.09;stroke-width:2}
+.field text{fill:#FFFFFF;opacity:.07;font:900 28px var(--display)}
+.board-top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:900;font-size:clamp(44px,12vw,62px);line-height:.85;margin:0;text-transform:uppercase;letter-spacing:.01em}
+h1 span{color:var(--board-gold)}
+.mode{font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:5px 9px;border-radius:6px;border:1px solid var(--board-line);color:var(--board-dim)}
+.mode.live{color:#FF7A6E;border-color:#FF7A6E}
+.bks{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:center;border:1px solid var(--board-line);border-radius:12px;padding:12px 14px}
+.bks .num{grid-row:span 2;font:700 clamp(40px,12vw,56px) var(--mono);line-height:1;color:var(--board-gold);font-variant-numeric:tabular-nums}
+.bks .lbl{font:700 11px var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--board-dim)}
+.bks .tier{font-family:var(--display);font-weight:900;font-size:26px;text-transform:uppercase;line-height:1}
+.bks .meter{grid-column:1/-1;height:6px;border-radius:3px;background:var(--board-line);overflow:hidden}
+.bks .meter i{display:block;height:100%;background:var(--board-gold);transition:width .6s ease}
+.bks .sub{grid-column:1/-1;font-size:13px;color:var(--board-dim);font-variant-numeric:tabular-nums}
+.delta{font:700 15px var(--mono);margin-left:6px}
+.delta.up{color:#5FD38D} .delta.down{color:#FF7A6E}
+.cells{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cell{border:1px solid var(--board-line);border-radius:10px;padding:8px 10px;min-width:0}
+.cell small{display:block;font:700 10px var(--body);letter-spacing:.16em;text-transform:uppercase;color:var(--board-dim)}
+.cell b{font:700 clamp(16px,4.6vw,21px) var(--mono);font-variant-numeric:tabular-nums;color:var(--board-ink);white-space:nowrap}
+.disclaim{margin:0;font-size:12px;color:var(--board-dim)}
+.tabs{display:flex;gap:6px;background:var(--slip);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tab{flex:1;appearance:none;border:0;background:transparent;color:var(--muted);border-radius:9px;padding:10px;font:700 15px var(--body);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.card{background:var(--slip);border:1px solid var(--line);border-radius:16px;padding:18px 16px;display:grid;gap:14px}
+.card h2{font-family:var(--display);font-weight:900;font-size:30px;text-transform:uppercase;margin:0;line-height:1}
+.eyebrow{font:700 12px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pips{display:flex;gap:5px}
+.pip{width:22px;height:6px;border-radius:3px;background:var(--line)}
+.pip.g{background:var(--turf)} .pip.y{background:var(--amber)} .pip.r{background:var(--red)} .pip.now{background:var(--ink)}
+.cat{font-family:var(--display);font-weight:900;font-size:clamp(40px,12vw,64px);line-height:.9;text-transform:uppercase;text-align:center;margin:6px 0;letter-spacing:.01em}
+.catsub{text-align:center;color:var(--muted);margin:0}
+.wagers{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.wager{appearance:none;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:12px 2px;font:700 clamp(14px,4vw,18px) var(--mono);cursor:pointer;font-variant-numeric:tabular-nums}
+.wager:hover:not(:disabled){border-color:var(--ink)}
+.wager.max{border-color:var(--gold);color:var(--gold)}
+.wager:disabled{opacity:.25;cursor:default;text-decoration:line-through}
+.wager[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.q{font-family:var(--display);font-weight:700;font-size:clamp(24px,6.5vw,30px);line-height:1.1;margin:0;text-wrap:balance}
+.timer{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--turf);transform-origin:left}
+.timer i.low{background:var(--red)}
+.tleft{font:700 13px var(--mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.opts{display:grid;gap:8px}
+.opts.two{grid-template-columns:1fr 1fr}
+.opt{appearance:none;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:14px;font:700 17px var(--body);text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.opts.two .opt{text-align:center;font-size:20px}
+.opt:hover:not(:disabled){border-color:var(--ink)}
+.opt.right{border-color:var(--turf);background:color-mix(in srgb, var(--turf) 16%, transparent)}
+.opt.wrong{border-color:var(--red);background:color-mix(in srgb, var(--red) 14%, transparent)}
+.opt:disabled{cursor:default}
+.numrow{display:flex;gap:8px}
+.numrow input{flex:1;min-width:0;font:700 26px var(--mono);text-align:center;padding:12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.numrow input:focus{outline:none;border-color:var(--turf)}
+.verdict{font-family:var(--display);font-weight:900;font-size:clamp(34px,10vw,48px);text-transform:uppercase;line-height:.95;margin:0;text-align:center}
+.verdict.g{color:var(--turf)} .verdict.y{color:var(--amber)} .verdict.r{color:var(--red)}
+.roast{text-align:center;margin:0;font-weight:600}
+.payout{display:flex;justify-content:center;align-items:baseline;gap:10px;font:700 18px var(--mono);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.payout b{font-size:34px}
+.fact{border-left:4px solid var(--gold-bg);padding:4px 0 4px 12px;margin:0}
+.crowdline{font-size:14px;color:var(--muted);margin:0;text-align:center}
+.btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.btn{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:12px;padding:13px 20px;font:700 16px var(--body);cursor:pointer}
+.btn.primary{background:var(--turf);border-color:var(--turf);color:var(--turf-ink)}
+.btn.gold{background:var(--gold-bg);border-color:var(--gold-bg);color:var(--gold-ink)}
+.btn.big{font-size:19px;padding:16px 26px;width:100%}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:focus-visible,.opt:focus-visible,.wager:focus-visible,.tab:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.rules{margin:0;padding-left:20px;display:grid;gap:6px}
+.summary{text-align:center;justify-items:center}
+.summary .total{font-family:var(--display);font-weight:900;font-size:68px;line-height:.9;font-variant-numeric:tabular-nums}
+.summary .total small{font-size:22px;color:var(--muted)}
+.squares{font-size:30px;letter-spacing:6px}
+.recap{width:100%;display:grid;gap:6px;text-align:left}
+.recap .r{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;min-width:0;font-size:14px}
+.recap .r b{font-family:var(--mono)}
+.recap .r span:nth-child(2){min-width:0;overflow-wrap:anywhere}
+.wtag{font:700 12px var(--mono);padding:2px 6px;border-radius:6px;background:var(--line)}
+.wtag.max{background:var(--gold-bg);color:var(--gold-ink)}
+.beat{font-weight:700;margin:0}
+.games{display:grid;gap:12px}
+.game{background:var(--slip);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
+.ghead{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.ghead .tag{font:700 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--turf)}
+.team{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;min-width:0}
+.team .nm{min-width:0}
+.team .nm b{font-family:var(--display);font-weight:700;font-size:22px;text-transform:uppercase;line-height:1;display:block;overflow-wrap:anywhere}
+.team .nm small{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.ml{font:700 14px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;min-width:58px}
+.team input{width:64px;font:700 22px var(--mono);text-align:center;padding:8px 4px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font-variant-numeric:tabular-nums}
+.team .final{width:64px;font:700 22px var(--mono);text-align:center;font-variant-numeric:tabular-nums}
+.team.win .nm b{color:var(--turf)}
+.pickline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pickline b{color:var(--ink)}
+.lrow .chip{min-width:96px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.chip{appearance:none;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:4px 10px;font:700 13px var(--mono);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip.max{border-color:var(--gold)}
+.chip:disabled{opacity:.3;cursor:default}
+.crowd{display:grid;gap:6px;font-size:13px}
+.crowd .bar{display:flex;height:26px;border-radius:8px;overflow:hidden;font:700 12px var(--mono);font-variant-numeric:tabular-nums}
+.crowd .bar span{display:flex;align-items:center;padding:0 8px;white-space:nowrap;min-width:0;overflow:hidden}
+.crowd .bar .a{background:var(--blue);color:#fff}
+.crowd .bar .h{background:var(--turf);color:var(--turf-ink);justify-content:flex-end}
+.crowd .note{color:var(--muted)} .crowd .note b{color:var(--ink)}
+.callout{font-weight:700} .callout.fade{color:var(--red)} .callout.with{color:var(--turf)}
+.result{border-top:1px dashed var(--line);padding-top:10px;display:grid;gap:4px;font-size:14px}
+.result .row{display:flex;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums}
+.result .row span:last-child{font-family:var(--mono);font-weight:700}
+.result .tot span:last-child{color:var(--gold)}
+.lock{font:700 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--red)}
+.pending{font-size:13px;color:var(--muted);margin:0}
+.msg{margin:0;text-align:center;color:var(--muted)}
+.handle{display:flex;gap:8px;flex-wrap:wrap}
+.handle input{flex:1;min-width:0;font:600 16px var(--body);padding:10px 12px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+table.lb{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.lb th{font:700 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+table.lb td{padding:8px 4px;border-bottom:1px solid var(--line);font-size:15px}
+table.lb td.r{font-family:var(--mono);font-weight:700;text-align:right} table.lb th.r{text-align:right}
+table.lb tr.me td{background:color-mix(in srgb, var(--gold-bg) 22%, transparent);font-weight:700}
+table.lb td.t{color:var(--muted);font-size:13px}
+.lbwrap{overflow-x:auto}
+textarea.copybox{width:100%;font:14px var(--mono);border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px}
+.next{font:500 13px var(--mono);color:var(--muted);margin:0;text-align:center}
+.foot{font-size:12px;color:var(--muted);margin:0}
+.pop{animation:pop .45s ease}
+@keyframes pop{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.today{position:relative;overflow:hidden}
+.today .chalk{position:absolute;right:-6px;top:6px;width:150px;height:auto;color:var(--muted);opacity:.28;pointer-events:none}
+.today>*:not(.chalk){position:relative}
+.statusline{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.statusline b{font-family:var(--display);font-weight:900;font-size:44px;line-height:1}
+.ladder{display:grid;gap:6px}
+.rung{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.rung .th{font:700 13px var(--mono);color:var(--muted)}
+.rung .nm{font-family:var(--display);font-weight:700;font-size:20px;text-transform:uppercase}
+.rung.done{opacity:.55}
+.rung.cur{border-color:var(--gold);background:color-mix(in srgb, var(--gold-bg) 20%, transparent)}
+.rung .you{font:700 12px var(--mono);background:var(--ink);color:var(--bg);padding:2px 8px;border-radius:999px}
+.prog{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--gold-bg)}
+.mus{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
+.mu{flex:0 0 172px;scroll-snap-align:start;border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:6px;background:var(--bg)}
+.mu .when{display:flex;justify-content:space-between;gap:6px;font:700 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.mu .when .tg{color:var(--turf)}
+.mu .tm{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;font-variant-numeric:tabular-nums}
+.mu .tm b{font-family:var(--display);font-weight:900;font-size:22px;line-height:1}
+.mu .tm small{color:var(--muted);font-size:12px}
+.mu .tm span:last-child{font:700 13px var(--mono)}
+.mu .tm.fav b{color:var(--turf)}
+.mu.tonight{border-color:var(--turf)}
+.recap{display:grid;gap:10px}
+.rg{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:4px;font-size:14px;font-variant-numeric:tabular-nums}
+.rg .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.rg .top b{font-family:var(--display);font-weight:900;font-size:20px}
+.rg .row{display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
+.rg .row span:last-child{font-family:var(--mono);font-weight:700;color:var(--ink)}
+.rg .pts{font:900 20px var(--mono)}
+.rg.hit{border-color:var(--turf)} .rg.hit .pts{color:var(--turf)}
+.recap .sum{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
+.recap .sum b{font-family:var(--display);font-weight:900;font-size:40px;line-height:1}
+@media (prefers-reduced-motion: reduce){ .pop,.shake{animation:none} .bks .meter i{transition:none} }
+@media (max-width:420px){ .team input,.team .final{width:54px;font-size:19px} .ml{min-width:50px;font-size:13px} .team .nm b{font-size:19px} .opt{padding:12px;font-size:16px} }
+</style>
+
+<div class="wrap">
+  <section class="board" aria-label="Scoreboard">
+    <svg class="field" viewBox="0 0 600 320" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect class="stripe" x="0" y="0" width="50" height="320"/><rect class="stripe" x="100" y="0" width="50" height="320"/><rect class="stripe" x="200" y="0" width="50" height="320"/><rect class="stripe" x="300" y="0" width="50" height="320"/><rect class="stripe" x="400" y="0" width="50" height="320"/><rect class="stripe" x="500" y="0" width="50" height="320"/><rect class="stripe" x="600" y="0" width="50" height="320"/><line class="yl" x1="0" y1="0" x2="0" y2="320"/><line class="yl" x1="50" y1="0" x2="50" y2="320"/><line class="yl" x1="100" y1="0" x2="100" y2="320"/><line class="yl" x1="150" y1="0" x2="150" y2="320"/><line class="yl" x1="200" y1="0" x2="200" y2="320"/><line class="yl" x1="250" y1="0" x2="250" y2="320"/><line class="yl" x1="300" y1="0" x2="300" y2="320"/><line class="yl" x1="350" y1="0" x2="350" y2="320"/><line class="yl" x1="400" y1="0" x2="400" y2="320"/><line class="yl" x1="450" y1="0" x2="450" y2="320"/><line class="yl" x1="500" y1="0" x2="500" y2="320"/><line class="yl" x1="550" y1="0" x2="550" y2="320"/><line class="yl" x1="600" y1="0" x2="600" y2="320"/><line class="hash" x1="5" y1="104" x2="5" y2="112"/><line class="hash" x1="5" y1="208" x2="5" y2="216"/><line class="hash" x1="15" y1="104" x2="15" y2="112"/><line class="hash" x1="15" y1="208" x2="15" y2="216"/><line class="hash" x1="25" y1="104" x2="25" y2="112"/><line class="hash" x1="25" y1="208" x2="25" y2="216"/><line class="hash" x1="35" y1="104" x2="35" y2="112"/><line class="hash" x1="35" y1="208" x2="35" y2="216"/><line class="hash" x1="45" y1="104" x2="45" y2="112"/><line class="hash" x1="45" y1="208" x2="45" y2="216"/><line class="hash" x1="55" y1="104" x2="55" y2="112"/><line class="hash" x1="55" y1="208" x2="55" y2="216"/><line class="hash" x1="65" y1="104" x2="65" y2="112"/><line class="hash" x1="65" y1="208" x2="65" y2="216"/><line class="hash" x1="75" y1="104" x2="75" y2="112"/><line class="hash" x1="75" y1="208" x2="75" y2="216"/><line class="hash" x1="85" y1="104" x2="85" y2="112"/><line class="hash" x1="85" y1="208" x2="85" y2="216"/><line class="hash" x1="95" y1="104" x2="95" y2="112"/><line class="hash" x1="95" y1="208" x2="95" y2="216"/><line class="hash" x1="105" y1="104" x2="105" y2="112"/><line class="hash" x1="105" y1="208" x2="105" y2="216"/><line class="hash" x1="115" y1="104" x2="115" y2="112"/><line class="hash" x1="115" y1="208" x2="115" y2="216"/><line class="hash" x1="125" y1="104" x2="125" y2="112"/><line class="hash" x1="125" y1="208" x2="125" y2="216"/><line class="hash" x1="135" y1="104" x2="135" y2="112"/><line class="hash" x1="135" y1="208" x2="135" y2="216"/><line class="hash" x1="145" y1="104" x2="145" y2="112"/><line class="hash" x1="145" y1="208" x2="145" y2="216"/><line class="hash" x1="155" y1="104" x2="155" y2="112"/><line class="hash" x1="155" y1="208" x2="155" y2="216"/><line class="hash" x1="165" y1="104" x2="165" y2="112"/><line class="hash" x1="165" y1="208" x2="165" y2="216"/><line class="hash" x1="175" y1="104" x2="175" y2="112"/><line class="hash" x1="175" y1="208" x2="175" y2="216"/><line class="hash" x1="185" y1="104" x2="185" y2="112"/><line class="hash" x1="185" y1="208" x2="185" y2="216"/><line class="hash" x1="195" y1="104" x2="195" y2="112"/><line class="hash" x1="195" y1="208" x2="195" y2="216"/><line class="hash" x1="205" y1="104" x2="205" y2="112"/><line class="hash" x1="205" y1="208" x2="205" y2="216"/><line class="hash" x1="215" y1="104" x2="215" y2="112"/><line class="hash" x1="215" y1="208" x2="215" y2="216"/><line class="hash" x1="225" y1="104" x2="225" y2="112"/><line class="hash" x1="225" y1="208" x2="225" y2="216"/><line class="hash" x1="235" y1="104" x2="235" y2="112"/><line class="hash" x1="235" y1="208" x2="235" y2="216"/><line class="hash" x1="245" y1="104" x2="245" y2="112"/><line class="hash" x1="245" y1="208" x2="245" y2="216"/><line class="hash" x1="255" y1="104" x2="255" y2="112"/><line class="hash" x1="255" y1="208" x2="255" y2="216"/><line class="hash" x1="265" y1="104" x2="265" y2="112"/><line class="hash" x1="265" y1="208" x2="265" y2="216"/><line class="hash" x1="275" y1="104" x2="275" y2="112"/><line class="hash" x1="275" y1="208" x2="275" y2="216"/><line class="hash" x1="285" y1="104" x2="285" y2="112"/><line class="hash" x1="285" y1="208" x2="285" y2="216"/><line class="hash" x1="295" y1="104" x2="295" y2="112"/><line class="hash" x1="295" y1="208" x2="295" y2="216"/><line class="hash" x1="305" y1="104" x2="305" y2="112"/><line class="hash" x1="305" y1="208" x2="305" y2="216"/><line class="hash" x1="315" y1="104" x2="315" y2="112"/><line class="hash" x1="315" y1="208" x2="315" y2="216"/><line class="hash" x1="325" y1="104" x2="325" y2="112"/><line class="hash" x1="325" y1="208" x2="325" y2="216"/><line class="hash" x1="335" y1="104" x2="335" y2="112"/><line class="hash" x1="335" y1="208" x2="335" y2="216"/><line class="hash" x1="345" y1="104" x2="345" y2="112"/><line class="hash" x1="345" y1="208" x2="345" y2="216"/><line class="hash" x1="355" y1="104" x2="355" y2="112"/><line class="hash" x1="355" y1="208" x2="355" y2="216"/><line class="hash" x1="365" y1="104" x2="365" y2="112"/><line class="hash" x1="365" y1="208" x2="365" y2="216"/><line class="hash" x1="375" y1="104" x2="375" y2="112"/><line class="hash" x1="375" y1="208" x2="375" y2="216"/><line class="hash" x1="385" y1="104" x2="385" y2="112"/><line class="hash" x1="385" y1="208" x2="385" y2="216"/><line class="hash" x1="395" y1="104" x2="395" y2="112"/><line class="hash" x1="395" y1="208" x2="395" y2="216"/><line class="hash" x1="405" y1="104" x2="405" y2="112"/><line class="hash" x1="405" y1="208" x2="405" y2="216"/><line class="hash" x1="415" y1="104" x2="415" y2="112"/><line class="hash" x1="415" y1="208" x2="415" y2="216"/><line class="hash" x1="425" y1="104" x2="425" y2="112"/><line class="hash" x1="425" y1="208" x2="425" y2="216"/><line class="hash" x1="435" y1="104" x2="435" y2="112"/><line class="hash" x1="435" y1="208" x2="435" y2="216"/><line class="hash" x1="445" y1="104" x2="445" y2="112"/><line class="hash" x1="445" y1="208" x2="445" y2="216"/><line class="hash" x1="455" y1="104" x2="455" y2="112"/><line class="hash" x1="455" y1="208" x2="455" y2="216"/><line class="hash" x1="465" y1="104" x2="465" y2="112"/><line class="hash" x1="465" y1="208" x2="465" y2="216"/><line class="hash" x1="475" y1="104" x2="475" y2="112"/><line class="hash" x1="475" y1="208" x2="475" y2="216"/><line class="hash" x1="485" y1="104" x2="485" y2="112"/><line class="hash" x1="485" y1="208" x2="485" y2="216"/><line class="hash" x1="495" y1="104" x2="495" y2="112"/><line class="hash" x1="495" y1="208" x2="495" y2="216"/><line class="hash" x1="505" y1="104" x2="505" y2="112"/><line class="hash" x1="505" y1="208" x2="505" y2="216"/><line class="hash" x1="515" y1="104" x2="515" y2="112"/><line class="hash" x1="515" y1="208" x2="515" y2="216"/><line class="hash" x1="525" y1="104" x2="525" y2="112"/><line class="hash" x1="525" y1="208" x2="525" y2="216"/><line class="hash" x1="535" y1="104" x2="535" y2="112"/><line class="hash" x1="535" y1="208" x2="535" y2="216"/><line class="hash" x1="545" y1="104" x2="545" y2="112"/><line class="hash" x1="545" y1="208" x2="545" y2="216"/><line class="hash" x1="555" y1="104" x2="555" y2="112"/><line class="hash" x1="555" y1="208" x2="555" y2="216"/><line class="hash" x1="565" y1="104" x2="565" y2="112"/><line class="hash" x1="565" y1="208" x2="565" y2="216"/><line class="hash" x1="575" y1="104" x2="575" y2="112"/><line class="hash" x1="575" y1="208" x2="575" y2="216"/><line class="hash" x1="585" y1="104" x2="585" y2="112"/><line class="hash" x1="585" y1="208" x2="585" y2="216"/><line class="hash" x1="595" y1="104" x2="595" y2="112"/><line class="hash" x1="595" y1="208" x2="595" y2="216"/><text x="50" y="296" text-anchor="middle">10</text><text x="100" y="296" text-anchor="middle">20</text><text x="150" y="296" text-anchor="middle">30</text><text x="200" y="296" text-anchor="middle">40</text><text x="250" y="296" text-anchor="middle">50</text><text x="300" y="296" text-anchor="middle">40</text><text x="350" y="296" text-anchor="middle">30</text><text x="400" y="296" text-anchor="middle">20</text><text x="450" y="296" text-anchor="middle">10</text></svg>
+    <div class="board-top">
+      <h1>Co<span>ver</span></h1>
+      <span class="mode" id="mode">Daily</span>
+    </div>
+    <div class="bks" aria-live="polite">
+      <span class="num" id="bksNum">500</span>
+      <span class="lbl">Ball Knowledge Score</span>
+      <span class="tier" id="bksTier">Starter</span>
+      <span class="meter" aria-hidden="true"><i id="bksMeter" style="width:44%"></i></span>
+      <span class="sub" id="bksSub"></span>
+    </div>
+    <div class="cells">
+      <div class="cell"><small>Today</small><b id="cPts">0</b></div>
+      <div class="cell"><small>Streak</small><b id="cStreak">0</b></div>
+      <div class="cell"><small>Rank</small><b id="cRank">–</b></div>
+    </div>
+    <p class="disclaim">Free to play. Play money only, no real wagers.</p>
+  </section>
+  <section id="handleBox"></section>
+  <nav class="tabs" id="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabHome" aria-selected="true">Home</button>
+    <button class="tab" role="tab" id="tabDaily" aria-selected="false">Daily Five</button>
+    <button class="tab" role="tab" id="tabSlate" aria-selected="false" hidden>Slate</button>
+  </nav>
+  <section id="home" style="display:grid;gap:16px"></section>
+  <section id="daily" aria-live="polite" hidden></section>
+  <section id="slate" hidden></section>
+  <section class="card" id="lbCard">
+    <h2>Leaderboard</h2>
+    <div class="lbwrap" id="lb"><p class="pending">Loading…</p></div>
+  </section>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+(function(){
+// Real data: NFL 2026 regular season, from the SportRadar feed. Updated 2026-11-03.
+const DATA_AS_OF="Nov 3, 2026";
+const TEAMS={ARI:"Cardinals",ATL:"Falcons",BAL:"Ravens",BUF:"Bills",CAR:"Panthers",CHI:"Bears",CIN:"Bengals",CLE:"Browns",DAL:"Cowboys",DEN:"Broncos",DET:"Lions",GB:"Packers",HOU:"Texans",IND:"Colts",JAC:"Jaguars",KC:"Chiefs",LA:"Rams",LAC:"Chargers",LV:"Raiders",MIA:"Dolphins",MIN:"Vikings",NE:"Patriots",NO:"Saints",NYG:"Giants",NYJ:"Jets",PHI:"Eagles",PIT:"Steelers",SEA:"Seahawks",SF:"49ers",TB:"Buccaneers",TEN:"Titans",WAS:"Commanders"};
+const RECORDS={NYG:"4-2",WAS:"2-4",PHI:"2-6",DAL:"3-5",NO:"2-5",TB:"3-5",ATL:"3-5",CAR:"3-4",LA:"4-4",SEA:"4-4",ARI:"3-5",SF:"6-1",MIN:"6-1",CHI:"6-2",GB:"5-3",DET:"5-2",LAC:"0-7",KC:"5-2",LV:"4-4",DEN:"6-2",MIA:"1-6",NYJ:"2-6",BUF:"6-1",NE:"5-3",IND:"2-6",HOU:"2-5",TEN:"1-7",JAC:"5-2",CIN:"5-2",PIT:"6-2",CLE:"5-3",BAL:"4-4"};
+// Upcoming games: [id, kickoff UTC, away, home, away win %, home win %, label]
+const SLATE=[
+ ["0335b50d","2026-11-06T01:15:00Z","JAC","BAL",82.3,17.7,"Thursday Night Football"],
+ ["0123cfbf","2026-11-08T14:30:00Z","CIN","ATL",60,40,""],
+ ["59de6442","2026-11-08T18:00:00Z","DAL","IND",69.5,30.5,""],
+ ["5b7f1d2b","2026-11-08T18:00:00Z","LA","WAS",68.3,31.7,""],
+ ["7aff506a","2026-11-08T18:00:00Z","CLE","NO",46.5,53.5,""],
+ ["b4c8199a","2026-11-08T18:00:00Z","NYJ","KC",19.3,80.7,""],
+ ["c183e3ee","2026-11-08T18:00:00Z","DET","MIA",73.8,26.2,""],
+ ["e88605bc","2026-11-08T18:00:00Z","DEN","CAR",58.3,41.7,""],
+ ["f7aa7dc3","2026-11-08T18:00:00Z","NYG","PHI",62.2,37.8,""],
+ ["f345e4a0","2026-11-08T21:05:00Z","HOU","LAC",66.5,33.5,""],
+ ["8030b23a","2026-11-08T21:25:00Z","LV","SF",null,null,""],
+ ["a3020470","2026-11-08T21:25:00Z","GB","NE",null,null,""],
+ ["a6953f89","2026-11-08T21:25:00Z","ARI","SEA",null,null,""],
+ ["6654f093","2026-11-09T01:20:00Z","TB","CHI",null,null,"Sunday Night Football"],
+ ["481bb9be","2026-11-10T01:15:00Z","BUF","MIN",null,null,"Monday Night Football"]
+];
+// Finals for slate games, filled in as they finish: id -> [away score, home score]
+// ODDS: real sportsbook lines (DraftKings via ESPN), {idPrefix:[awayML, homeML, "spread", total]}. Overrides feed win odds when present.
+const ODDS={
+ "0335b50d":[-520,390,"JAC -10",40.5],
+ "0123cfbf":[-162,136,"CIN -3",52.5],
+ "59de6442":[-278,225,"DAL -6",51.5],
+ "5b7f1d2b":[-245,200,"LA -5.5",47.5],
+ "7aff506a":[100,-120,"NO -1.5",42.5],
+ "b4c8199a":[370,-485,"KC -9.5",46.5],
+ "c183e3ee":[-375,295,"DET -7",50.5],
+ "e88605bc":[-142,120,"DEN -2.5",43.5],
+ "f7aa7dc3":[-170,142,"NYG -3.5",39.5],
+ "f345e4a0":[-205,170,"HOU -4.5",40.5],
+ "8030b23a":[410,-550,"SF -10",52.5],
+ "a3020470":[140,-166,"NE -3",46.5],
+ "a6953f89":[440,-600,"SEA -10.5",41.5],
+ "6654f093":[230,-285,"CHI -6",46.5],
+ "481bb9be":[-180,150,"BUF -3.5",45.5]
+};
+const RESULTS={};
+// Completed games this season: [date, away, home, away score, home score, label]
+const PAST=[
+ ["2026-09-10","SF","LA",27,7,"Thursday Night"],["2026-09-13","GB","MIN",22,39,""],["2026-09-13","BUF","HOU",36,31,""],["2026-09-13","ATL","PIT",13,20,""],
+ ["2026-09-13","DAL","NYG",20,28,"Sunday Night"],["2026-09-13","TB","CIN",27,33,""],["2026-09-14","DEN","KC",10,31,"Monday Night"],["2026-09-17","DET","BUF",31,41,"Thursday Night"],
+ ["2026-09-20","MIN","CHI",9,3,""],["2026-09-20","IND","KC",30,33,"Sunday Night"],["2026-09-20","MIA","SF",13,35,""],["2026-09-20","PIT","NE",3,20,""],
+ ["2026-09-20","WAS","DAL",20,37,""],["2026-09-20","CIN","HOU",20,6,""],["2026-09-27","MIN","TB",23,16,""],["2026-09-27","KC","MIA",24,10,""],
+ ["2026-09-27","LAC","BUF",16,24,""],["2026-09-27","ARI","SF",30,36,""],["2026-09-27","CIN","PIT",27,30,""],["2026-09-27","BAL","DAL",34,31,""],
+ ["2026-10-01","PIT","CLE",24,27,"Thursday Night"],["2026-10-04","MIA","MIN",10,15,""],["2026-10-04","KC","LV",30,27,""],["2026-10-04","NE","BUF",29,26,""],
+ ["2026-10-04","DEN","SF",14,24,""],["2026-10-04","DAL","HOU",34,30,""],["2026-10-04","JAC","CIN",22,17,""],["2026-10-08","TB","DAL",24,16,"Thursday Night"],
+ ["2026-10-11","MIN","NO",23,13,""],["2026-10-11","SF","SEA",32,29,""],["2026-10-11","IND","PIT",22,34,""],["2026-10-11","CIN","MIA",31,24,""],
+ ["2026-10-12","BUF","LA",37,34,"Monday Night"],["2026-10-18","LAC","KC",6,22,""],["2026-10-18","BUF","LV",33,30,""],["2026-10-18","PIT","TB",26,19,""],
+ ["2026-10-18","DAL","GB",13,23,"Sunday Night"],["2026-10-19","WAS","SF",17,23,"Monday Night"],["2026-10-25","NYG","HOU",27,21,""],["2026-10-25","DEN","ARI",30,16,""],
+ ["2026-10-25","LA","LV",35,21,""],["2026-10-25","GB","DET",17,20,""],["2026-10-25","KC","SEA",3,20,"Sunday Night"],["2026-10-25","SF","ATL",20,29,""],
+ ["2026-10-25","PIT","NO",16,10,""],["2026-10-25","IND","MIN",10,16,""],["2026-10-25","CIN","BAL",35,13,""],["2026-10-26","DAL","PHI",38,21,"Monday Night"],
+ ["2026-10-29","CAR","GB",19,27,"Thursday Night"],["2026-11-01","IND","JAC",7,42,""],["2026-11-01","TEN","CIN",36,43,""],["2026-11-01","CLE","PIT",6,27,""],
+ ["2026-11-01","MIN","DET",15,19,""],["2026-11-01","ATL","TB",0,16,""],["2026-11-01","ARI","DAL",33,30,""],["2026-11-01","LV","NYJ",38,33,""],
+ ["2026-11-01","BAL","BUF",10,36,""],["2026-11-01","LAC","LA",9,24,""],["2026-11-01","NE","MIA",24,19,""],["2026-11-01","KC","DEN",24,28,""],
+ ["2026-11-01","PHI","WAS",10,27,"Sunday Night"],["2026-11-02","CHI","SEA",34,17,"Monday Night"]
+];
+
+
+// Daily question bank. Each day uses the next 5 in order, starting 2026-11-03.
+// k: duel | scored | ou | closest | detective | match | fact
+// mc questions: o = options, a = index of the right one. closest: ans, tol (points fall to 0 at this error), unit.
+// Box-score questions come from the SportRadar feed and ESPN box scores (2026 season, Weeks 1-8). Facts are historical and stable.
+const Q_START="2026-11-03";
+const QUESTIONS=[
+ {"k": "duel", "q": "Week 8 team passing yards. Whose offense threw for more?", "o": ["Burrow's Bengals (vs TEN)", "Mahomes' Chiefs (at DEN)"], "a": 0, "f": "Bengals 462, Chiefs 321. Burrow's crew went 38-for-48 in a 43-36 overtime shootout, then Burrow won it himself on a 9-yard scramble."},
+ {"k": "scored", "q": "Ravens at Bills, Week 8: who caught Josh Allen's 23-yard TD in the 4th quarter?", "o": ["D. Moore", "D. Kincaid", "J. Cook", "J. Hawes"], "a": 1, "f": "Dalton Kincaid. Buffalo rolled 36-10, and Allen also ran one in from a yard out."},
+ {"k": "match", "q": "Bagged groceries at a Hy-Vee in Iowa before becoming a Super Bowl MVP.", "o": ["Tom Brady", "Kurt Warner", "Drew Brees", "Peyton Manning"], "a": 1, "f": "Kurt Warner stocked shelves at the Cedar Falls Hy-Vee, then won Super Bowl XXXIV MVP with the Rams."},
+ {"k": "closest", "q": "How long was Tyler Bass's longest field goal vs Baltimore in Week 8?", "ans": 56, "tol": 15, "unit": "yards", "f": "56 yards. He also hit from 51 at the end of the first half and went 3-for-3."},
+ {"k": "fact", "q": "Matthew Stafford and Clayton Kershaw went to the same high school.", "o": ["Fact", "Cap"], "a": 0, "f": "Fact. Both went to Highland Park High School in Dallas and were teammates growing up."},
+ {"k": "duel", "q": "Week 8 receiving yards, same game: who had more?", "o": ["Tee Higgins (CIN)", "Ja'Marr Chase (CIN)"], "a": 0, "f": "Higgins 155 on 10 catches with 2 TDs. Chase had 141 on 11 catches."},
+ {"k": "long", "q": "Ashton Jeanty's longest catch vs the Jets in Week 8?", "ans": 45, "tol": 15, "unit": "yards", "f": "45 yards. Jeanty had 64 receiving yards and only 9 rushing."},
+ {"k": "match", "q": "Played college football at Mississippi Valley State.", "o": ["Randy Moss", "Jerry Rice", "Terrell Owens", "Calvin Johnson"], "a": 1, "f": "Jerry Rice. Moss went to Marshall, Owens to Chattanooga, Johnson to Georgia Tech."},
+ {"k": "defense", "q": "Titans at Bengals: which Titan intercepted Joe Burrow three times?", "o": ["Anthony Hill Jr.", "Amani Hooker", "Kevin Winston Jr.", "Jacob Martin"], "a": 1, "f": "Amani Hooker had all 3 picks. Jacob Martin added 3 sacks, and Cincinnati still won in OT."},
+ {"k": "cap", "q": "Two of these are real. Which one is cap?", "o": ["Brock Purdy was the last pick of the 2022 draft.", "Tom Brady played college football at Michigan State.", "Lamar Jackson was the 32nd pick in 2018."], "a": 1, "f": "Brady played at Michigan, not Michigan State."},
+ {"k": "defense", "q": "Week 7 on TNF: which Bear intercepted Drake Maye?", "o": ["Kyler Gordon", "D'Marco Jackson", "Tyrique Stevenson Sr.", "Dillon Thieneman"], "a": 1, "f": "D'Marco Jackson. Maye still threw for 321 yards."},
+ {"k": "duel", "q": "Cardinals at 49ers, Week 3: who had more receiving yards?", "o": ["George Kittle", "Michael Wilson"], "a": 1, "f": "Wilson 89 on 11 catches. Kittle 82 on 6, with 2 TDs."},
+ {"k": "long", "q": "DJ Moore's longest catch vs Baltimore in Week 8?", "ans": 49, "tol": 15, "unit": "yards", "f": "49 yards. Moore finished with 4 catches, 82 yards and a TD."},
+ {"k": "scored", "q": "Week 1, Broncos at Chiefs. 3rd quarter, 60-yard TD run. Who broke it?", "o": ["Kenneth Walker III", "Patrick Mahomes", "Rashee Rice", "Travis Kelce"], "a": 0, "f": "Walker went 60 on the first drive of the 3rd and finished with 173 rushing yards."},
+ {"k": "match", "q": "Started his college career at Alabama, then transferred to Oklahoma.", "o": ["Kyler Murray", "Jalen Hurts", "Baker Mayfield", "Tua Tagovailoa"], "a": 1, "f": "Jalen Hurts. Murray started at Texas A&M, Mayfield at Texas Tech."},
+ {"k": "ou", "q": "Week 3 vs Arizona: Christian McCaffrey rushing yards. Over or under 84.5?", "o": ["Over", "Under"], "a": 1, "f": "Under. 75 yards on 15 carries, plus a 1-yard TD."},
+ {"k": "closest", "q": "Week 5 vs the 49ers: how many field goals did Seahawks K Jason Myers make?", "ans": 5, "tol": 3, "unit": "field goals", "f": "5 for 5, from 40 to 50 yards. Seattle still lost 32-29."},
+ {"k": "scored", "q": "Week 7, Patriots at Bears (TNF). 2nd quarter, 0:03 left, 48-yard TD catch from Drake Maye. Who caught it?", "o": ["Hunter Henry", "Rhamondre Stevenson", "Eli Raridon", "A.J. Brown"], "a": 1, "f": "Rhamondre Stevenson, out of the backfield. He finished with 93 receiving yards."},
+ {"k": "cap", "q": "Two of these are real. Which one is cap?", "o": ["Justin Jefferson played college football at Alabama.", "Puka Nacua set the rookie record with 105 catches in 2023.", "Ja'Marr Chase and Justin Jefferson were teammates at LSU."], "a": 0, "f": "Jefferson played at LSU, alongside Chase."},
+ {"k": "duel", "q": "Single-game rushing yards. Who ran for more?", "o": ["Kenneth Walker III (KC vs DEN, Week 1)", "Javonte Williams (DAL, Week 7)"], "a": 0, "f": "Walker 173. Javonte Williams 155 on 25 carries."},
+ {"k": "duel", "q": "Patriots at Bears, Week 7: who had more receiving yards?", "o": ["Hunter Henry (NE)", "Colston Loveland (CHI)"], "a": 0, "f": "Henry 71, Loveland 69. Both had 7 catches."},
+ {"k": "long", "q": "Week 4 at Carolina: Lions K Jake Bates' longest field goal?", "ans": 54, "tol": 12, "unit": "yards", "f": "54 yards. Bates made all 4 of his field goals."},
+ {"k": "cap", "q": "49ers at Seahawks, Week 5. Two are real. Which one is cap?", "o": ["Jason Myers made all 5 of his field goals.", "Sam Darnold threw 3 touchdown passes.", "Seattle lost 32-29."], "a": 1, "f": "Darnold threw 1 TD, to Jaxon Smith-Njigba."},
+ {"k": "scored", "q": "Week 1, Bears at Panthers. 3rd quarter, 61-yard TD run. Who scored it?", "o": ["D'Andre Swift", "Kyle Monangai", "Caleb Williams", "Cole Kmet"], "a": 1, "f": "Kyle Monangai, on his way to 100 yards on 10 carries. Chicago won 59-37."},
+ {"k": "long", "q": "Week 1 vs Denver: Travis Kelce's longest catch?", "ans": 59, "tol": 15, "unit": "yards", "f": "59 yards. Kelce had only 3 catches, for 71 yards."},
+ {"k": "scored", "q": "Week 1, Bucs at Bengals. 1st quarter, 2-yard TD catch from Joe Burrow. Who caught it?", "o": ["Ja'Marr Chase", "Mike Gesicki", "Tee Higgins", "Chase Brown"], "a": 1, "f": "Mike Gesicki. Cincinnati won 33-27, with Evan McPherson hitting 4 field goals."},
+ {"k": "long", "q": "Week 7 vs New England: Luther Burden III's longest catch?", "ans": 58, "tol": 15, "unit": "yards", "f": "58 yards. Burden had 4 catches for 130."},
+ {"k": "duel", "q": "Single-game passing yards. Who threw for more?", "o": ["Brock Purdy (SF vs ARI, Week 3)", "Bryce Young (CAR at PHI, Week 6)"], "a": 0, "f": "Purdy 297 with 4 TDs on only 15 completions. Young 281."},
+ {"k": "match", "q": "His father pitched in Major League Baseball.", "o": ["Josh Allen", "Patrick Mahomes", "Joe Burrow", "Justin Herbert"], "a": 1, "f": "Patrick Mahomes. His dad, Pat Mahomes, pitched in the majors."},
+ {"k": "closest", "q": "Tee Higgins' receiving yards vs Tennessee in Week 8?", "ans": 155, "tol": 45, "unit": "yards", "f": "155 yards and 2 TDs on 10 catches."},
+ {"k": "scored", "q": "Week 7, Patriots at Bears. 2nd quarter, 0:21 left, 24-yard TD catch from Caleb Williams. Who caught it?", "o": ["Colston Loveland", "Rome Odunze", "Luther Burden III", "D'Andre Swift"], "a": 2, "f": "Luther Burden III, who had 130 yards on 4 catches. Loveland scored in the 3rd."},
+ {"k": "duel", "q": "Single-game tackles. Who had more?", "o": ["Fred Warner (SF vs ARI, Week 3)", "Alex Singleton (DEN at KC, Week 1)"], "a": 0, "f": "Warner 17, Singleton 16."},
+ {"k": "cap", "q": "Two of these are real. Which one is cap?", "o": ["Aaron Rodgers was the No. 1 overall pick in 2005.", "Kyler Murray was a first-round pick of the Oakland A's.", "Russell Wilson was drafted by the Colorado Rockies."], "a": 0, "f": "Rodgers went 24th. Alex Smith went first."},
+ {"k": "ou", "q": "Titans at Bengals: Tony Pollard rushing yards. Over or under 109.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 117 yards and 2 TDs, including a 40-yarder."},
+ {"k": "defense", "q": "Raiders at Jets: who led the game with 14 tackles?", "o": ["Nakobe Dean", "Jamien Sherwood", "Jeremy Chinn", "Quay Walker"], "a": 1, "f": "Jamien Sherwood. Nakobe Dean had 12 for Vegas."},
+ {"k": "defense", "q": "Week 1 at Arrowhead: which Bronco intercepted Patrick Mahomes?", "o": ["Riley Moss", "Talanoa Hufanga", "Brandon Jones", "Alex Singleton"], "a": 2, "f": "Brandon Jones. KC won anyway, 31-10."},
+ {"k": "cap", "q": "Lions at Panthers, Week 4. Two are real. Which one is cap?", "o": ["Jake Bates made 4 field goals.", "Carolina won by 10.", "Jared Goff threw 52 passes."], "a": 1, "f": "Carolina won by 6, 32-26."},
+ {"k": "duel", "q": "Single-game rushing yards. Who ran for more?", "o": ["Chuba Hubbard (CAR at PHI, Week 6)", "D'Andre Swift (CHI at CAR, Week 1)"], "a": 1, "f": "Swift 124 with 3 TDs. Hubbard 120 on 28 carries."},
+ {"k": "long", "q": "Week 1 vs the Bucs: Evan McPherson's longest field goal?", "ans": 58, "tol": 12, "unit": "yards", "f": "58 yards. He went 4 for 4: 20, 55, 58 and 32."},
+ {"k": "scored", "q": "Week 5, 49ers at Seahawks. 2nd quarter, 0:18 left: a fumble recovered in the end zone for a 49ers TD. Who recovered it?", "o": ["Fred Warner", "Gracen Halton", "Deommodore Lenoir", "Renardo Green"], "a": 1, "f": "Gracen Halton forced the fumble and fell on it in the end zone. SF won 32-29."},
+ {"k": "closest", "q": "Week 3 at San Francisco: how many passes did Jacoby Brissett complete?", "ans": 38, "tol": 10, "unit": "completions", "f": "38 of 52 for 280 yards and 2 TDs, in a 36-30 loss."},
+ {"k": "duel", "q": "Tetairoa McMillan: when did he have more receiving yards?", "o": ["Week 1 vs Chicago", "Week 6 at Philadelphia"], "a": 1, "f": "Week 6: 86 yards. Week 1: 75."},
+ {"k": "match", "q": "A 2017 fifth-round pick out of Iowa who became an All-Pro tight end.", "o": ["T.J. Hockenson", "George Kittle", "Sam LaPorta", "Noah Fant"], "a": 1, "f": "George Kittle. All four are Iowa tight ends; the other three went in the first two rounds."},
+ {"k": "ou", "q": "Week 1 at Carolina: Caleb Williams total TDs (passing + rushing). Over or under 3.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 2 passing and 2 rushing."},
+ {"k": "scored", "q": "Week 2, Lions at Bills (TNF). 1st quarter, 43-yard TD catch from Josh Allen. Who caught it?", "o": ["Dalton Kincaid", "Dawson Knox", "Joshua Palmer", "James Cook"], "a": 2, "f": "Joshua Palmer. Kincaid, Knox and Cook all scored later in Buffalo's 41-31 win."},
+ {"k": "scored", "q": "Week 7, Giants at Texans. Overtime, 30-yard TD run to win it. Who scored for New York?", "o": ["Cam Skattebo", "Tyrone Tracy Jr.", "Jameis Winston", "Devin Singletary"], "a": 3, "f": "Devin Singletary walked it off, 27-21. Tracy, Winston and Skattebo all scored earlier."},
+ {"k": "match", "q": "Won a title with Joe Burrow at LSU and went 22nd overall in 2020.", "o": ["Ja'Marr Chase", "Justin Jefferson", "Terrace Marshall Jr.", "Clyde Edwards-Helaire"], "a": 1, "f": "Justin Jefferson. Edwards-Helaire went 32nd that year; Chase went 5th in 2021."},
+ {"k": "duel", "q": "Week 8 rushing yards. Who ran for more?", "o": ["Braelon Allen (NYJ vs LV)", "Tony Pollard (TEN at CIN)"], "a": 0, "f": "Allen 147 on 21 carries. Pollard 117 on 21 with 2 TDs."},
+ {"k": "ou", "q": "Week 6 at Philadelphia: Chuba Hubbard carries. Over or under 24.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 28 carries for 120 yards and a TD."},
+ {"k": "ou", "q": "Week 1 vs Chicago: Bryce Young passing yards. Over or under 330.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 361 yards and 3 TDs, in a 59-37 loss."},
+ {"k": "long", "q": "Week 6 at Philadelphia: Panthers K Ryan Fitzgerald's longest field goal?", "ans": 52, "tol": 12, "unit": "yards", "f": "52 yards. Carolina won 25-14."},
+ {"k": "defense", "q": "Eagles at Commanders: which Commander intercepted Tanner McKee?", "o": ["Nick Cross", "Rasul Douglas", "Frankie Luvu", "Sonny Styles"], "a": 1, "f": "Rasul Douglas. Washington also had 5 sacks from 5 different players."},
+ {"k": "duel", "q": "Single-game sacks. Who had more?", "o": ["Zach Allen (DEN at KC, Week 1)", "Jacob Martin (TEN at CIN, Week 8)"], "a": 1, "f": "Martin 3, Allen 2."},
+ {"k": "scored", "q": "Week 2, Lions at Bills. 4th quarter, 27-yard TD catch with 1:48 left. Who scored for Detroit?", "o": ["Sam LaPorta", "Jahmyr Gibbs", "Jameson Williams", "Amon-Ra St. Brown"], "a": 3, "f": "Amon-Ra St. Brown, his second TD of the night. Gibbs and LaPorta also scored."},
+ {"k": "match", "q": "Played college football at Cincinnati.", "o": ["George Kittle", "Travis Kelce", "Mark Andrews", "Rob Gronkowski"], "a": 1, "f": "Travis Kelce. Kittle went to Iowa, Andrews to Oklahoma, Gronk to Arizona."},
+ {"k": "cap", "q": "Colts at Chiefs, Week 2. Two are real. Which one is cap?", "o": ["The game went to overtime.", "Three field goals were kicked in OT.", "Jonathan Taylor caught the Colts' first TD."], "a": 2, "f": "Tyler Warren caught it. Taylor ran for 2 TDs."},
+ {"k": "closest", "q": "How many passing yards did Geno Smith throw for vs the Raiders?", "ans": 290, "tol": 70, "unit": "yards", "f": "290 yards, 2 TDs, 1 INT, and the Jets still lost 38-33."},
+ {"k": "ou", "q": "Chiefs at Broncos: Emmett Johnson receiving yards. Over or under 99.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 128 yards on 5 catches, 73 of them on one TD."},
+ {"k": "scored", "q": "Week 3, Cardinals at 49ers. 4th quarter, 20-yard TD catch with 1:36 left. Who sealed it for San Francisco?", "o": ["George Kittle", "Jordan Watkins", "Mike Evans", "Christian McCaffrey"], "a": 0, "f": "George Kittle, his second TD of the day (6 catches, 82 yards). SF won 36-30."},
+ {"k": "duel", "q": "Single-game receiving yards. Who had more?", "o": ["Jalen Coker (CAR vs CHI, Week 1)", "Luther Burden III (CHI vs NE, Week 7)"], "a": 0, "f": "Coker 138 on 8 catches. Burden 130 on 4."},
+ {"k": "defense", "q": "Week 7, Patriots at Bears: who led the game in tackles?", "o": ["Marcus Jones", "Dillon Thieneman", "Christian Elliss", "Craig Woodson"], "a": 2, "f": "Christian Elliss with 13. Marcus Jones had 9 and a sack."},
+ {"k": "closest", "q": "Week 1 at Carolina: how many points did the Bears score?", "ans": 59, "tol": 20, "unit": "points", "f": "59, in a 59-37 win. Both teams combined for 96."},
+ {"k": "scored", "q": "Week 3, Cardinals at 49ers. 1st quarter: a 2-yard catch turned into an 80-yard TD on a lateral. Who took the lateral to the house?", "o": ["Mike Evans", "Christian McCaffrey", "Deebo Samuel Sr.", "George Kittle"], "a": 2, "f": "Mike Evans caught it and pitched to Deebo Samuel Sr., who went 80 yards. ESPN credits Deebo with 80 receiving yards on zero catches."},
+ {"k": "long", "q": "Week 2 vs the Colts: how long was Harrison Butker's overtime game-winner?", "ans": 40, "tol": 12, "unit": "yards", "f": "40 yards. OT had three field goals: Butker from 31, Spencer Shrader from 38, then Butker from 40."},
+ {"k": "cap", "q": "Lions at Bills, Week 2. Two are real. Which one is cap?", "o": ["Amon-Ra St. Brown caught 2 TDs.", "Josh Allen accounted for 5 TDs.", "Detroit led 14-0 after the 1st quarter."], "a": 2, "f": "Buffalo led 14-0 after one."},
+ {"k": "defense", "q": "Week 1 at Kansas City: which Bronco had 2 sacks?", "o": ["Zach Allen", "Dondrea Tillman", "Talanoa Hufanga", "Riley Moss"], "a": 0, "f": "Zach Allen, 2 sacks and 5 tackles."},
+ {"k": "scored", "q": "Titans at Bengals: who caught Cam Ward's 15-yard TD in the 4th?", "o": ["C. Dike", "W. Robinson", "G. Helm", "T. Pollard"], "a": 1, "f": "Wan'Dale Robinson, then Gunnar Helm caught the 2-point try."},
+ {"k": "cap", "q": "Cardinals at 49ers, Week 3. Two are real. Which one is cap?", "o": ["Brock Purdy threw 2 interceptions.", "Fred Warner made 17 tackles.", "Jacoby Brissett completed 38 passes."], "a": 0, "f": "Purdy threw 0 picks and 4 TDs."},
+ {"k": "long", "q": "George Pickens' longest catch vs Arizona?", "ans": 37, "tol": 12, "unit": "yards", "f": "37 yards, one of just 2 catches for 48."},
+ {"k": "defense", "q": "Titans at Bengals: who led the game with 14 tackles?", "o": ["Jordan Battle", "Anthony Hill Jr.", "Kevin Winston Jr.", "Barrett Carter"], "a": 1, "f": "Anthony Hill Jr. of Tennessee. Jordan Battle had 12 for Cincinnati."},
+ {"k": "scored", "q": "Week 5, Lions at Cardinals. 3rd quarter, 39-yard TD catch from Jared Goff. Who caught it?", "o": ["Sam LaPorta", "Jameson Williams", "Amon-Ra St. Brown", "Jahmyr Gibbs"], "a": 1, "f": "Jameson Williams, his second TD of the game (8 and 39). Detroit won 45-21."},
+ {"k": "defense", "q": "Week 1, Broncos at Chiefs: who led the game in tackles?", "o": ["L'Jarius Sneed", "Alex Singleton", "Drue Tranquill", "Nick Bolton"], "a": 1, "f": "Alex Singleton with 16. Sneed led KC with 8."},
+ {"k": "ou", "q": "Raiders at Jets: Brock Bowers receiving yards. Over or under 85.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 92 yards and 2 TDs on 7 catches."},
+ {"k": "defense", "q": "Ravens at Bills: which Bill intercepted Joe Fagnano?", "o": ["Cole Bishop", "Davison Igbinosun", "Greg Rousseau", "Landon Jackson"], "a": 1, "f": "Davison Igbinosun. Buffalo also had 4 sacks."},
+ {"k": "cap", "q": "Bears at Panthers, Week 1. Two are real. Which one is cap?", "o": ["The Bears scored 59 points.", "Kyle Monangai ran for 100 yards on 10 carries.", "Caleb Williams threw 4 touchdown passes."], "a": 2, "f": "Williams threw 2 TDs and ran for 2 more."},
+ {"k": "scored", "q": "Week 2, Colts at Chiefs (SNF). 2nd quarter, 24-yard TD run. Who scored for Indianapolis?", "o": ["Daniel Jones", "Tyler Warren", "Jonathan Taylor"], "a": 2, "f": "Jonathan Taylor, who added a 5-yard TD in the 4th. Tyler Warren caught the Colts' first TD."},
+ {"k": "closest", "q": "How many TD passes did Joe Burrow throw vs Tennessee?", "ans": 5, "tol": 3, "unit": "TDs", "f": "5, plus a rushing TD to win it in overtime."},
+ {"k": "closest", "q": "Week 1 vs Denver: how many rushing yards did Kenneth Walker III have?", "ans": 173, "tol": 50, "unit": "yards", "f": "173 yards on 23 carries, with a 60-yard TD."},
+ {"k": "defense", "q": "Week 1 vs Chicago: how many tackles did Panthers LB Devin Lloyd make?", "ans": 13, "tol": 5, "unit": "tackles", "f": "13 tackles (9 solo, 4 assisted)."},
+ {"k": "match", "q": "Went second overall in 2010 after starring at Nebraska.", "o": ["Gerald McCoy", "Ndamukong Suh", "Lavonte David", "Prince Amukamara"], "a": 1, "f": "Ndamukong Suh, to Detroit. Gerald McCoy went third out of Oklahoma."},
+ {"k": "scored", "q": "Week 6, Commanders at 49ers (MNF). Two 1-yard TD runs, one in the 1st and one in the 2nd. Who scored both?", "o": ["Brock Purdy", "George Kittle", "Christian McCaffrey", "Kyle Juszczyk"], "a": 2, "f": "Christian McCaffrey. Kittle caught an 11-yard TD earlier. SF won 23-17."},
+ {"k": "cap", "q": "Patriots at Bears, Week 7. Two are real. Which one is cap?", "o": ["Drake Maye threw for under 250 yards.", "Luther Burden III had 130 receiving yards.", "Cairo Santos hit a 58-yard field goal."], "a": 0, "f": "Maye threw for 321."},
+ {"k": "ou", "q": "Week 7 at Chicago: Rhamondre Stevenson receiving yards. Over or under 79.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 93 yards on 5 catches, including a 48-yard TD."},
+ {"k": "defense", "q": "Week 3 vs Arizona: how many tackles did Fred Warner make?", "ans": 17, "tol": 6, "unit": "tackles", "f": "17 tackles. Renardo Green had 13."},
+ {"k": "scored", "q": "Week 4, Lions at Panthers (SNF). 2nd quarter, 32-yard TD catch from Bryce Young. Who caught it?", "o": ["Jalen Coker", "Chuba Hubbard", "Tetairoa McMillan", "Tommy Tremble"], "a": 2, "f": "Tetairoa McMillan, who added a 10-yard TD in the 3rd. Carolina won 32-26."}
+];
+
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const now=new Date();
+const keyOf=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const TODAY=keyOf(now);
+const fmtDay=d=>d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+const fmtTime=d=>d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+const fmtN=n=>Math.round(n).toLocaleString("en-US");
+function moneyline(p){ if(p==null) return null; p/=100; if(p>=.5) return -Math.round(100*p/(1-p)); return Math.round(100*(1-p)/p); }
+const fmtML=m=>m==null?"—":(m>0?"+":"")+m;
+const imp=m=>m<0?-m/(-m+100):100/(m+100);
+function oddsOf(id){ return (typeof ODDS!=="undefined"&&ODDS[id])||null; }
+function pwOf(g){ const o=oddsOf(g[0]); if(o){ const a=imp(o[0]),h=imp(o[1]); return [100*a/(a+h),100*h/(a+h)]; } return g[4]==null?null:[g[4],g[5]]; }
+function mlOf(id,pw,side){ const o=oddsOf(id); if(o) return o[side]; return pw?moneyline(pw[side]):null; }
+function lineOf(id){ const o=oddsOf(id); return o?o[2]+" · O/U "+o[3]:""; }
+function hash(s){let h=2166136261;for(const c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+const validPick=p=>Array.isArray(p)&&p.length===2&&p.every(v=>v!==""&&v!=null&&isFinite(+v))?[+p[0],+p[1]]:null;
+const dayNum=k=>Math.round((new Date(k+"T12:00:00")-new Date(Q_START+"T12:00:00"))/864e5);
+
+const CATS={long:"Longest Play",defense:"Defense",cap:"Spot the Cap",duel:"Stat Duel",scored:"Who Scored?",ou:"Over / Under",closest:"Closest Wins",detective:"Box Score Detective",match:"Match the Fact",fact:"Fact or Cap"};
+const CATSUB={long:"One player, one game. How long was his biggest play?",defense:"Real defensive box scores. Tackles, sacks, picks.",cap:"Three statements. Two are real. Find the fake.",duel:"Two real stat lines. One number. Pick the bigger one.",scored:"A real touchdown from this season. Name the guy.",ou:"A real stat line. Over or under?",closest:"Type a number. The closer you are, the more you get.",detective:"A real box score. Which game was it?",match:"A real player fact. Match it to the player.",fact:"True or made up? Call it."};
+const SECONDS=30, WAGERS=[1,2,3,4,5];
+const ROAST_W=["That's a Jets fan answer.","The tape doesn't lie, and neither does this.","Bold. Wrong, but bold.","Someone's been watching the wrong RedZone.","Your fantasy team just felt that.","Respectfully: no."];
+const ROAST_R=["Ball knower.","That's film-room stuff.","Somebody reads box scores.","Clean. Call your bookie. (Don't.)","Scouts are taking notes.","Different breed."];
+
+// ---- Today's questions (same for everyone) ----
+const DN=Math.max(0,dayNum(TODAY));
+const TODAY_Q=[0,1,2,3,4].map(i=>QUESTIONS[(DN*5+i)%QUESTIONS.length]);
+
+// ---- Live slate ----
+const SLATE_BY_ID=Object.fromEntries(SLATE.map(g=>[g[0],g]));
+const todaysSlate=SLATE.filter(g=>keyOf(new Date(g[1]))===TODAY);
+const LIVE=todaysSlate.length>0;
+const games=todaysSlate.map(g=>({id:g[0],start:new Date(g[1]),away:g[2],home:g[3],pw:pwOf(g),label:g[6],fin:RESULTS[g[0]]||null}));
+const SLATE_CAPS={5:1,4:1,3:1};
+
+function scorePick(pick, fin, pWin){
+  const pm=pick[1]-pick[0], am=fin[1]-fin[0];
+  let win=0;
+  if(am!==0 && (pm>0)===(am>0)){ const p=pWin==null?50:(pm>0?pWin[1]:pWin[0]); win=pWin==null?30:Math.min(60,Math.round(30*50/p)); }
+  const spread=Math.max(0,35-3*Math.abs(pm-am));
+  const total=Math.max(0,35-2*Math.abs((pick[0]+pick[1])-(fin[0]+fin[1])));
+  return {win,spread,total,sum:win+spread+total};
+}
+function lineInfo(id,away,home){ const o=oddsOf(id); if(!o) return null; const m=String(o[2]).match(/^([A-Z]+)\s*-?\s*([\d.]+)/); if(!m) return null;
+  const fav=m[1], n=+m[2], favA=fav===away; return {fav,n,favA,tot:+o[3],lab:{a:away+" "+(n?(favA?"-":"+")+n:"PK"),h:home+" "+(n?(favA?"+":"-")+n:"PK"),o:"Over "+o[3],u:"Under "+o[3]}}; }
+function linePts(id,away,home,fin,l){ const L=lineInfo(id,away,home), r={ats:0,ou:0,atsR:"",ouR:""}; if(!L||!l) return r;
+  if(l.s==="a"||l.s==="h"){ const fm=L.favA?fin[0]-fin[1]:fin[1]-fin[0]; const pickFav=(l.s==="a")===L.favA; const d=pickFav?fm-L.n:L.n-fm; r.atsR=d>0?"hit":d===0?"push":"miss"; r.ats=d>0?30:d===0?10:0; }
+  if(l.t==="o"||l.t==="u"){ const T=fin[0]+fin[1]; const d=l.t==="o"?T-L.tot:L.tot-T; r.ouR=d>0?"hit":d===0?"push":"miss"; r.ou=d>0?30:d===0?10:0; }
+  return r; }
+function gamePts(g,fin,slip){ const id=g[0], pk=validPick((slip.picks||{})[id]), l=(slip.lines||{})[id]||null; const hasL=!!(l&&(l.s||l.t));
+  const s=pk?scorePick(pk,fin,pwOf(g)):{win:0,spread:0,total:0,sum:0}; const lp=linePts(id,g[2],g[3],fin,l);
+  return {pk,l,has:!!pk||hasL,win:s.win,spread:s.spread,total:s.total,ats:lp.ats,ou:lp.ou,atsR:lp.atsR,ouR:lp.ouR,sum:s.sum+lp.ats+lp.ou}; }
+const hasPick=(slip,id)=>{ const l=(slip.lines||{})[id]||{}; return !!validPick((slip.picks||{})[id])||!!(l.s||l.t); };
+function gradeQ(q, ans){
+  if(ans==null||ans==="") return 0;
+  if(q.ans!=null){ const v=+ans; if(!isFinite(v)) return 0; return Math.round(100*Math.max(0,1-Math.abs(v-q.ans)/q.tol)); }
+  return +ans===q.a?100:0;
+}
+const colorOf=b=>b>=90?"g":b>0?"y":"r";
+const SQ={g:"🟩",y:"🟨",r:"🟥"};
+
+// ---- Ball Knowledge Score ----
+const TIERS=[[850,"Hall of Fame"],[700,"All-Pro"],[550,"Pro Bowl"],[400,"Starter"],[0,"Practice Squad"]];
+const tierOf=r=>TIERS.find(t=>r>=t[0])[1];
+function events(slip){
+  const ev=[];
+  for(const [d,rounds] of Object.entries(slip.days||{})) if(Array.isArray(rounds)) rounds.forEach((x,i)=>{ if(x&&isFinite(+x.b)) ev.push({t:d+"T1"+i,perf:Math.min(1,(+x.b)/100),w:Math.min(5,Math.max(1,+x.w||1)),kind:"q"}); });
+  for(const gid of new Set([...Object.keys(slip.picks||{}),...Object.keys(slip.lines||{})])){
+    const g=SLATE_BY_ID[gid], fin=RESULTS[gid];
+    if(!g||!fin||!hasPick(slip,gid)) continue;
+    ev.push({t:g[1],perf:Math.min(1,gamePts(g,fin,slip).sum/100),w:Math.min(5,Math.max(1,+((slip.wagers||{})[gid])||1)),kind:"s"});
+  }
+  return ev.sort((a,b)=>a.t<b.t?-1:1);
+}
+function rating(slip){
+  let r=500; const ev=events(slip);
+  for(const e of ev){ const exp=e.kind==="q"?0.25+0.5*(r/1000):0.2+0.4*(r/1000); r=Math.max(100,Math.min(999,r+6*e.w*(e.perf-exp))); }
+  return {r:Math.round(r),n:ev.length};
+}
+function streakOf(slip){ const d=new Date(now); let s=0; const has=k=>Array.isArray((slip.days||{})[k])&&slip.days[k].length===5;
+  if(!has(keyOf(d))) d.setDate(d.getDate()-1);
+  while(has(keyOf(d))){ s++; d.setDate(d.getDate()-1); } return s; }
+
+// ---- My slip ----
+let me=store.get("cover-me",null)||{handle:(store.get("cover-slip",{}).handle||""),days:{},picks:{},lines:{},wagers:{},submitted:{}};
+["days","picks","lines","wagers","submitted"].forEach(k=>{ if(!me[k]||typeof me[k]!=="object") me[k]={}; });
+let run=store.get("cover-run-"+TODAY,{i:0,phase:"intro",w:null,deadline:0,ans:[]});
+const saveRun=()=>store.set("cover-run-"+TODAY,run);
+let db=null, myRef=null, uid=null, social="loading", others=[], writing=false, dirty=false, lastDelta=null, timer=null, tab="daily";
+const saveLocal=()=>store.set("cover-me",me);
+async function push(){
+  saveLocal(); if(!myRef) return;
+  if(writing){ dirty=true; return; } writing=true;
+  try{ await myRef.set(JSON.parse(JSON.stringify({...me,updated:new Date().toISOString()}))); }catch(e){}
+  writing=false; if(dirty){ dirty=false; push(); }
+}
+
+// ---- Shared store ----
+(async()=>{
+  const C=window.claude; if(!C||!C.use){ social="off"; renderSocial(); return; }
+  const t=setTimeout(()=>{ if(social==="loading"){ social="slow"; renderSocial(); } },10000);
+  try{
+    const [d,u]=await Promise.all([C.use("db"),C.use("user")]);
+    if(!d||!u){ clearTimeout(t); social="off"; renderSocial(); return; }
+    uid=await u.id(); if(!uid){ clearTimeout(t); social="off"; renderSocial(); return; }
+    db=d; myRef=db.collection("slips").doc(uid);
+    const snap=await myRef.get();
+    if(snap.exists){ const s=snap.data()||{}; me.handle=me.handle||String(s.handle||"");
+      ["days","picks","lines","wagers","submitted"].forEach(k=>{ me[k]={...(s[k]||{}),...me[k]}; }); saveLocal(); }
+    db.collection("slips").limit(1000).onSnapshot(qs=>{ clearTimeout(t); social="on"; others=qs.docs.filter(x=>x.exists).map(x=>({id:x.id,...(x.data()||{})})); renderSocial(); },
+      ()=>{ clearTimeout(t); social="off"; renderSocial(); });
+    renderBoard(); renderHandle();
+  }catch(e){ clearTimeout(t); social="off"; renderSocial(); }
+})();
+
+// ---- Board ----
+function todayQuizPts(){ const d=me.days[TODAY]; return Array.isArray(d)?d.reduce((a,x)=>a+(+x.b||0)*(+x.w||1),0):run.ans.reduce((a,x)=>a+(x?(+x.b||0)*(+x.w||1):0),0); }
+function todaySlatePts(){ return games.reduce((a,x)=>{ if(!x.fin||!hasPick(me,x.id)) return a; return a+gamePts(SLATE_BY_ID[x.id],x.fin,me).sum*(+me.wagers[x.id]||1); },0); }
+function liveMe(){ if(Array.isArray(me.days[TODAY])) return me; const part=run.ans.filter(Boolean).map(a=>({b:a.b,w:a.w})); return part.length?{...me,days:{...me.days,[TODAY]:part}}:me; }
+function renderBoard(){
+  const {r,n}=rating(liveMe());
+  $("bksNum").innerHTML=r+(lastDelta?'<span class="delta '+(lastDelta>0?"up":"down")+'">'+(lastDelta>0?"+":"")+lastDelta+'</span>':"");
+  $("bksTier").textContent=tierOf(r);
+  $("bksMeter").style.width=((r-100)/899*100).toFixed(1)+"%";
+  const nxt=[...TIERS].reverse().find(t=>t[0]>r);
+  $("bksSub").textContent=n===0?"Play today's five to start your rating.":(n<10?"Provisional · ":"")+n+(n===1?" play":" plays")+" graded"+(nxt?" · "+(nxt[0]-r)+" to "+nxt[1]:"");
+  $("mode").textContent=LIVE?"Game day":"Daily"; $("mode").className="mode"+(LIVE?" live":"");
+  $("cPts").textContent=fmtN(todayQuizPts()+todaySlatePts());
+  const s=streakOf(me); $("cStreak").textContent=s+(s>=3?" 🔥":"");
+}
+
+// ---- Handle ----
+function renderHandle(){
+  const box=$("handleBox");
+  if(!myRef||me.handle){ box.innerHTML=""; return; }
+  box.innerHTML='<div class="card"><h2>Claim your spot</h2><p class="pending" style="font-size:15px">Pick a name for the leaderboard. Everyone sees it next to your Ball Knowledge Score.</p>'+
+    '<form class="handle" id="hf"><label for="hn" hidden>Leaderboard name</label><input id="hn" maxlength="20" placeholder="e.g. CornhuskerCole" autocomplete="off"><button class="btn primary" type="submit">Save</button></form></div>';
+  $("hf").onsubmit=e=>{ e.preventDefault(); const v=$("hn").value.trim().replace(/\s+/g," ").slice(0,20); if(v.length<2) return; me.handle=v; push(); renderHandle(); renderLeaderboard(); };
+}
+
+// ---- Daily Five ----
+function pipsHTML(){ return '<div class="pips">'+TODAY_Q.map((q,i)=>{ const a=run.ans[i]; return '<span class="pip '+(a?colorOf(a.b):(i===run.i&&run.phase!=="intro"&&run.phase!=="done"?"now":""))+'"></span>'; }).join("")+'</div>'; }
+const usedW=()=>run.ans.filter(Boolean).map(a=>a.w);
+const leftW=()=>WAGERS.filter(w=>!usedW().includes(w));
+function renderDaily(){
+  clearInterval(timer);
+  const box=$("daily");
+  if(Array.isArray(me.days[TODAY])&&me.days[TODAY].length===5&&run.phase!=="reveal") run.phase="done";
+  ({intro:dIntro,category:dCategory,question:dQuestion,reveal:dReveal,done:dDone})[run.phase]?.(box);
+}
+function dIntro(box){
+  box.innerHTML='<div class="card"><div class="eyebrow"><span>Daily Five · '+esc(fmtDay(now))+'</span>'+pipsHTML()+'</div>'+
+    '<h2>Prove your ball knowledge</h2>'+
+    '<ol class="rules"><li>Five rounds of real NFL questions. 30 seconds each.</li>'+
+    '<li>Before each question you see its category, then place a wager: <b>+100</b> to <b>+500</b>.</li>'+
+    '<li>You get one of each wager per day, so save <b>+500</b> for the category you own.</li>'+
+    '<li>Right answers pay your wager. Wrong ones cost you Ball Knowledge, and big wagers cost more.</li></ol>'+
+    '<button class="btn primary big" id="go">Start today\'s five</button></div>';
+  $("go").onclick=()=>{ run.phase="category"; run.i=0; saveRun(); renderDaily(); };
+}
+function dCategory(box){
+  const q=TODAY_Q[run.i], left=leftW();
+  box.innerHTML='<div class="card"><div class="eyebrow"><span>Round '+(run.i+1)+' of 5</span>'+pipsHTML()+'</div>'+
+    '<div class="cat pop">'+esc(CATS[q.k])+'</div><p class="catsub">'+esc(CATSUB[q.k])+'</p>'+
+    '<div class="eyebrow"><span>Place your wager</span><span>'+(left.length===1?"Last one":left.length+" left")+'</span></div>'+
+    '<div class="wagers">'+WAGERS.map(w=>'<button class="wager'+(w===5?" max":"")+'" data-w="'+w+'"'+(left.includes(w)?"":" disabled")+' aria-label="Wager plus '+w*100+'">+'+w*100+'</button>').join("")+'</div>'+
+    '<p class="msg">The clock starts when you pick.</p></div>';
+  box.querySelectorAll(".wager").forEach(b=>b.onclick=()=>{ if(b.disabled) return; run.w=+b.dataset.w; run.phase="question"; run.deadline=Date.now()+SECONDS*1000; saveRun(); renderDaily(); });
+}
+function dQuestion(box){
+  const q=TODAY_Q[run.i];
+  let body;
+  if(q.ans!=null) body='<form class="numrow" id="nf"><label for="nv" hidden>Your answer</label><input id="nv" type="text" inputmode="decimal" autocomplete="off" placeholder="'+esc(q.unit)+'"><button class="btn primary" type="submit">Lock</button></form>';
+  else body='<div class="opts'+(q.o.length===2?" two":"")+'">'+q.o.map((o,i)=>'<button class="opt" data-i="'+i+'">'+esc(o)+'</button>').join("")+'</div>';
+  box.innerHTML='<div class="card"><div class="eyebrow"><span>'+esc(CATS[q.k])+' · <span class="wtag'+(run.w===5?" max":"")+'">+'+run.w*100+'</span></span><span class="tleft" id="tl"></span></div>'+
+    '<div class="timer" aria-hidden="true"><i id="tb"></i></div><p class="q">'+esc(q.q)+'</p>'+body+'</div>';
+  if(q.ans!=null){ const inp=$("nv"); inp.focus(); $("nf").onsubmit=e=>{ e.preventDefault(); const v=inp.value.replace(/[^\d.]/g,""); if(v!=="") answer(+v); }; }
+  else box.querySelectorAll(".opt").forEach(b=>b.onclick=()=>answer(+b.dataset.i));
+  const tick=()=>{ const ms=run.deadline-Date.now(), f=Math.max(0,ms/(SECONDS*1000)); const b=$("tb"); if(b){ b.style.transform="scaleX("+f+")"; b.classList.toggle("low",f<.3); }
+    const l=$("tl"); if(l) l.textContent=Math.ceil(Math.max(0,ms)/1000)+"s";
+    if(ms<=0){ clearInterval(timer); const inp=$("nv"); const v=inp&&inp.value.replace(/[^\d.]/g,""); answer(v?+v:null,true); } };
+  tick(); timer=setInterval(tick,200);
+}
+function answer(val,timeout){
+  clearInterval(timer);
+  const q=TODAY_Q[run.i], b=gradeQ(q,val), before=rating(me).r;
+  run.ans[run.i]={v:val,b,w:run.w,t:!!timeout};
+  const tmp={...me,days:{...me.days,[TODAY]:run.ans.filter(Boolean).map(a=>({b:a.b,w:a.w,v:a.v}))}};
+  lastDelta=rating(tmp).r-before;
+  if(run.ans.filter(Boolean).length===5){ me.days[TODAY]=run.ans.map(a=>({b:a.b,w:a.w,v:a.v})); push(); }
+  run.phase="reveal"; saveRun(); renderBoard(); renderDaily();
+}
+function crowdRight(i){
+  if(social!=="on") return null;
+  const xs=others.filter(o=>o.id!==uid).map(o=>((o.days||{})[TODAY]||[])[i]).filter(x=>x&&isFinite(+x.b));
+  if(!xs.length) return null;
+  return {pct:Math.round(100*xs.filter(x=>+x.b>=90).length/xs.length),n:xs.length};
+}
+function dReveal(box){
+  const q=TODAY_Q[run.i], a=run.ans[run.i], c=colorOf(a.b), last=run.i===4;
+  const verdict=a.t&&a.v==null?"Time!":c==="g"?(q.ans!=null&&a.b<100?"So close":"Correct"):c==="y"?"Close":"Wrong";
+  const roast=c==="g"?ROAST_R[hash(TODAY+run.i)%ROAST_R.length]:c==="r"?ROAST_W[hash(TODAY+run.i)%ROAST_W.length]:"Partial credit. The closer, the better.";
+  let ansHTML;
+  if(q.ans!=null) ansHTML='<p class="msg">You said <b>'+(a.v==null?"nothing":esc(a.v))+'</b>. Answer: <b>'+esc(q.ans)+' '+esc(q.unit)+'</b></p>';
+  else ansHTML='<div class="opts'+(q.o.length===2?" two":"")+'">'+q.o.map((o,i)=>'<button class="opt'+(i===q.a?" right":(i===a.v?" wrong":""))+'" disabled>'+esc(o)+'</button>').join("")+'</div>';
+  const cr=crowdRight(run.i);
+  box.innerHTML='<div class="card"><div class="eyebrow"><span>Round '+(run.i+1)+' of 5 · '+esc(CATS[q.k])+'</span>'+pipsHTML()+'</div>'+
+    '<p class="verdict '+c+' '+(c==="r"?"shake":"pop")+'">'+verdict+'</p><p class="roast">'+esc(roast)+'</p>'+
+    '<div class="payout"><span class="wtag'+(a.w===5?" max":"")+'">+'+a.w*100+'</span><span>×</span><span>'+a.b+'%</span><span>=</span><b>'+fmtN(a.b*a.w)+'</b><span>pts</span></div>'+
+    ansHTML+'<p class="fact">'+esc(q.f)+'</p>'+
+    (cr?'<p class="crowdline">'+cr.pct+'% of '+cr.n+' players got this right.</p>':'')+
+    '<button class="btn primary big" id="nx">'+(last?"See your day":"Next round")+'</button></div>';
+  $("nx").onclick=()=>{ lastDelta=null; if(last){ run.phase="done"; } else { run.i++; run.phase="category"; } saveRun(); renderBoard(); renderDaily(); };
+  $("nx").focus();
+}
+function beatPct(){
+  if(social!=="on") return null; const mine=todayQuizPts();
+  const xs=others.filter(o=>o.id!==uid).map(o=>(o.days||{})[TODAY]).filter(d=>Array.isArray(d)&&d.length===5).map(d=>d.reduce((a,x)=>a+(+x.b||0)*(+x.w||1),0));
+  if(!xs.length) return null; return {pct:Math.round(100*xs.filter(v=>v<mine).length/xs.length),n:xs.length};
+}
+function dDone(box){
+  const d=me.days[TODAY]||run.ans; const pts=todayQuizPts(), {r}=rating(me), bp=beatPct();
+  const sq=d.map(x=>SQ[colorOf(x.b)]).join("");
+  const maxHit=d.find(x=>x.w===5);
+  box.innerHTML='<div class="card summary"><div class="eyebrow" style="width:100%"><span>Daily Five · '+esc(fmtDay(now))+'</span><span>Final</span></div>'+
+    '<div class="total">'+fmtN(pts)+'<small> / 1,500</small></div><div class="squares" aria-label="Round results">'+sq+'</div>'+
+    (maxHit?'<p class="beat">'+(maxHit.b>=90?"Your +500 hit. 🔒":"Your +500 missed. Brutal.")+'</p>':'')+
+    (bp?'<p class="beat">You beat '+bp.pct+'% of today\'s '+bp.n+' other players.</p>':'')+
+    '<p class="pending" style="font-size:15px;margin:0">Ball Knowledge Score <b>'+r+'</b> · '+tierOf(r)+'</p>'+
+    '<div class="recap">'+TODAY_Q.map((q,i)=>{ const x=d[i]||{b:0,w:1}; return '<div class="r"><span>'+SQ[colorOf(x.b)]+'</span><span>'+esc(CATS[q.k])+' <span class="wtag'+(x.w===5?" max":"")+'">+'+x.w*100+'</span></span><b>'+fmtN(x.b*x.w)+'</b></div>'; }).join("")+'</div>'+
+    '<div class="btns" style="width:100%"><button class="btn gold big" id="share">Copy results</button></div><div id="cf" style="width:100%"></div>'+
+    (LIVE?'<button class="btn primary big" id="toSlate">Now make tonight\'s picks →</button>':'')+
+    '<button class="btn big" id="backHome">Back to home</button><p class="next" id="nextIn"></p></div>';
+  $("share").onclick=()=>share(); $("backHome").onclick=()=>setTab("home");
+  const ts=$("toSlate"); if(ts) ts.onclick=()=>setTab("slate");
+  const tick=()=>{ const n=new Date(), m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1), s=Math.max(0,Math.floor((m-n)/1000)); const el=$("nextIn"); if(el) el.textContent="New five in "+[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(pad).join(":"); };
+  tick(); timer=setInterval(tick,1000);
+}
+function share(){
+  const d=me.days[TODAY]||run.ans, {r}=rating(me), bp=beatPct();
+  const maxHit=d.find(x=>x&&x.w===5);
+  const text="COVER · "+now.toLocaleDateString(undefined,{month:"short",day:"numeric"})+"\n"+d.map(x=>SQ[colorOf(x.b)]).join("")+"  "+fmtN(todayQuizPts())+" pts\n"+
+    (maxHit?(maxHit.b>=90?"🔒 +500 hit\n":"💀 +500 missed\n"):"")+(bp?"Beat "+bp.pct+"% of players\n":"")+"Ball Knowledge "+r+" · "+tierOf(r);
+  const b=$("share"); const ok=()=>{ b.textContent="Copied"; setTimeout(()=>{ b.textContent="Copy results"; },1500); };
+  const fb=()=>{ $("cf").innerHTML='<textarea class="copybox" id="ct" rows="5" readonly></textarea>'; $("ct").value=text; $("ct").select(); };
+  try{ navigator.clipboard.writeText(text).then(ok,fb); }catch(e){ fb(); }
+}
+
+// ---- Slate ----
+const isLocked=x=>Date.now()>=x.start.getTime();
+const usedSlate=(w,except)=>games.filter(x=>x.id!==except&&+me.wagers[x.id]===w).length;
+function renderSlate(){
+  const box=$("slate"); if(!LIVE){ box.innerHTML=""; return; }
+  box.innerHTML='<div class="card"><h2>Tonight\'s Slate</h2><p class="pending" style="font-size:15px">Real games, real odds. Call the final score, take a side against the spread, hit the over/under, or do all three. Then wager on it. You get one +500, one +400 and one +300 for the slate; +100 and +200 are unlimited. Picks lock at kickoff.</p></div>'+
+    '<div class="games">'+games.map(gameHTML).join("")+'</div><div id="slateFoot"></div>';
+  games.forEach(x=>{
+    ["a","h"].forEach(side=>{ const el=$("in-"+side+"-"+x.id); if(!el) return;
+      el.oninput=()=>{ const v=el.value.replace(/\D/g,"").slice(0,2); el.value=v; const p=me.picks[x.id]?[...me.picks[x.id]]:["",""]; p[side==="a"?0:1]=v; me.picks[x.id]=p;
+        if(me.submitted[TODAY]) me.submitted[TODAY]="edited"; saveLocal(); updatePickLine(x); renderSlateFoot(); }; });
+    $("slate").querySelectorAll('.lchip[data-lg="'+x.id+'"]').forEach(c=>c.onclick=()=>{ if(c.disabled) return; const k=c.dataset.k, v=c.dataset.v; const l={...(me.lines[x.id]||{})}; l[k]=l[k]===v?"":v; me.lines[x.id]=l; if(me.submitted[TODAY]) me.submitted[TODAY]="edited"; saveLocal(); renderSlate(); });
+    $("slate").querySelectorAll('.chip[data-g="'+x.id+'"]').forEach(c=>c.onclick=()=>{ if(c.disabled) return; me.wagers[x.id]=+c.dataset.w; if(me.submitted[TODAY]) me.submitted[TODAY]="edited"; saveLocal(); renderSlate(); });
+  });
+  renderSlateFoot(); renderCrowd();
+}
+function gameHTML(x){
+  const p=me.picks[x.id]||["",""], locked=isLocked(x), showFinal=!!x.fin, w=+me.wagers[x.id]||1;
+  const mlA=mlOf(x.id,x.pw,0), mlH=mlOf(x.id,x.pw,1);
+  const winSide=showFinal?(x.fin[1]>x.fin[0]?"h":x.fin[0]>x.fin[1]?"a":""):"";
+  const row=(side,abbr,ml,val)=>'<div class="team'+(winSide===side?" win":"")+'"><div class="nm"><b>'+esc(abbr)+' '+esc(TEAMS[abbr]||"")+'</b><small>'+(side==="a"?"Away":"Home")+' · '+esc(RECORDS[abbr]||"")+'</small></div>'+
+    '<span class="ml">'+fmtML(ml)+'</span>'+(locked?'<span class="final">'+(val===""||val==null?"–":esc(val))+'</span>':
+      '<input type="text" inputmode="numeric" id="in-'+side+'-'+x.id+'" aria-label="'+esc(TEAMS[abbr]||abbr)+' points" value="'+esc(val==null?"":val)+'" placeholder="0">')+'</div>';
+  const chips='<div class="chips"><span>Wager</span>'+WAGERS.map(v=>{ const capped=SLATE_CAPS[v]&&usedSlate(v,x.id)>=SLATE_CAPS[v]; return '<button class="chip'+(v===5?" max":"")+'" data-g="'+x.id+'" data-w="'+v+'" aria-pressed="'+(w===v)+'"'+(locked||capped?" disabled":"")+'>+'+v*100+'</button>'; }).join("")+'</div>';
+  const L=lineInfo(x.id,x.away,x.home), ml=me.lines[x.id]||{};
+  const lrow=(k,lab,opts)=>'<div class="chips lrow"><span>'+lab+'</span>'+opts.map(v=>'<button class="chip lchip" data-lg="'+x.id+'" data-k="'+k+'" data-v="'+v+'" aria-pressed="'+(ml[k]===v)+'"'+(locked?" disabled":"")+'>'+esc(L.lab[v])+'</button>').join("")+'</div>';
+  const lines=L?lrow("s","Spread",["a","h"])+lrow("t","Total",["o","u"]):'';
+  let foot='';
+  if(showFinal){ const gp=gamePts(SLATE_BY_ID[x.id],x.fin,me); const fin='<div class="row"><span>Final</span><span>'+x.away+' '+x.fin[0]+' – '+x.fin[1]+' '+x.home+'</span></div>';
+    if(gp.has){ foot='<div class="result">'+fin+breakdown(gp,L)+'<div class="row tot"><span>'+gp.sum+' × +'+w*100+'</span><span>'+fmtN(gp.sum*w)+'</span></div></div>'; }
+    else foot='<div class="result">'+fin+'<p class="pending">No pick made.</p></div>';
+  } else if(locked) foot='<p class="pending"><span class="lock">Locked</span> · Waiting for the final.</p>';
+  return '<article class="game"><div class="ghead"><span>'+esc(fmtTime(x.start))+(lineOf(x.id)?' · '+esc(lineOf(x.id)):'')+'</span>'+(x.label?'<span class="tag">'+esc(x.label)+'</span>':'')+'</div>'+
+    row("a",x.away,mlA,p[0])+row("h",x.home,mlH,p[1])+'<div class="pickline" id="pl-'+x.id+'">'+pickLineText(x)+'</div>'+lines+chips+'<div class="crowd" id="cr-'+x.id+'"></div>'+foot+'</article>';
+}
+const RES={hit:"✓",push:"push",miss:"✗"};
+function breakdown(gp,L){ let h='';
+  if(gp.pk) h+='<div class="row"><span>Score call: winner · margin · total</span><span>'+gp.win+' · '+gp.spread+' · '+gp.total+'</span></div>';
+  if(gp.l&&gp.l.s&&L) h+='<div class="row"><span>Spread: '+esc(L.lab[gp.l.s])+' '+RES[gp.atsR]+'</span><span>'+gp.ats+'</span></div>';
+  if(gp.l&&gp.l.t&&L) h+='<div class="row"><span>Total: '+esc(L.lab[gp.l.t])+' '+RES[gp.ouR]+'</span><span>'+gp.ou+'</span></div>';
+  return h; }
+function pickLineText(x){ const pk=validPick(me.picks[x.id]); if(!pk) return '<span>Call the score (optional)</span>'; if(pk[0]===pk[1]) return '<span>A tie. Bold. Pick a winner?</span>';
+  return '<span>Your call: <b>'+(pk[1]>pk[0]?x.home:x.away)+' by '+Math.abs(pk[1]-pk[0])+'</b></span><span>Total <b>'+(pk[0]+pk[1])+'</b></span>'; }
+function updatePickLine(x){ const el=$("pl-"+x.id); if(el) el.innerHTML=pickLineText(x); }
+function renderSlateFoot(){
+  const box=$("slateFoot"); if(!box) return; const open=games.filter(x=>!isLocked(x)).length, sub=me.submitted[TODAY];
+  const any=games.some(x=>hasPick(me,x.id)&&!isLocked(x));
+  box.innerHTML=(open?'<div class="btns"><button class="btn primary big" id="subBtn"'+(any?"":" disabled")+'>'+(sub===true?"Slip locked ✓":sub?"Update my slip":"Lock my slip")+'</button></div>':'')+
+    '<p class="msg" style="margin-top:8px">'+(open?(sub===true?"Locked. You can still change picks until each kickoff.":"Lock your slip to see how the crowd called each game."):"All games are locked. Points post as finals come in.")+'</p>';
+  const b=$("subBtn"); if(b) b.onclick=()=>{ me.submitted[TODAY]=true; push(); renderSlateFoot(); renderCrowd(); };
+}
+function renderCrowd(){
+  games.forEach(x=>{ const el=$("cr-"+x.id); if(!el) return;
+    if(social!=="on"||!(me.submitted[TODAY]||isLocked(x))){ el.innerHTML=""; return; }
+    const cp=others.filter(o=>o.id!==uid).map(o=>validPick((o.picks||{})[x.id])).filter(Boolean), mine=validPick(me.picks[x.id]);
+    if(!cp.length){ el.innerHTML='<p class="note">You\'re first on this one. The crowd split shows up as others lock in.</p>'; return; }
+    const n=cp.length, hp=Math.round(100*cp.filter(p=>p[1]>p[0]).length/n), ap=Math.round(100*cp.filter(p=>p[0]>p[1]).length/n);
+    const am=cp.reduce((a,p)=>a+(p[1]-p[0]),0)/n, at=cp.reduce((a,p)=>a+p[0]+p[1],0)/n;
+    const big=others.filter(o=>o.id!==uid&&+((o.wagers||{})[x.id])>=4).length;
+    let call=""; if(mine&&mine[0]!==mine[1]){ const share=mine[1]>mine[0]?hp:ap; call=share<=35?'<span class="callout fade">You\'re fading '+(100-share)+'% of the crowd.</span>':'<span class="callout with">You\'re with '+share+'% of the crowd.</span>'; }
+    el.innerHTML='<div class="bar"><span class="a" style="width:'+Math.max(ap,12)+'%">'+x.away+' '+ap+'%</span><span class="h" style="width:'+Math.max(hp,12)+'%">'+hp+'% '+x.home+'</span></div>'+
+      '<span class="note">Crowd of '+n+': <b>'+(am>=0?x.home:x.away)+' by '+Math.abs(am).toFixed(1)+'</b>, total <b>'+at.toFixed(1)+'</b>.'+(big?' '+big+' went +400 or more.':'')+' '+call+'</span>';
+  });
+}
+
+// ---- Tabs ----
+function setTab(t){ tab=t; ["home","daily","slate"].forEach(k=>{ const b=$("tab"+k[0].toUpperCase()+k.slice(1)); if(b) b.setAttribute("aria-selected",t===k); $(k).hidden=t!==k; });
+  $("lbCard").hidden=t!=="home";
+  if(t==="slate") renderSlate(); else if(t==="daily") renderDaily(); else { clearInterval(timer); renderHome(); }
+  window.scrollTo&&window.scrollTo({top:0}); }
+function recapHTML(){
+  const byDay={}; SLATE.forEach(g=>{ const k=keyOf(new Date(g[1])); (byDay[k]=byDay[k]||[]).push(g); });
+  const k=Object.keys(byDay).filter(d=>d<=TODAY&&byDay[d].some(g=>RESULTS[g[0]])).sort().pop(); if(!k) return "";
+  const gs=byDay[k].filter(g=>RESULTS[g[0]]); const day=new Date(k+"T12:00:00");
+  const ago=Math.round((new Date(TODAY+"T12:00:00")-day)/864e5); if(ago>4) return "";
+  const when=ago===0?"Today's":ago===1?(day.toLocaleDateString(undefined,{weekday:"long"})==="Thursday"?"Thursday night's":"Last night's"):day.toLocaleDateString(undefined,{weekday:"long"})+"'s";
+  let tot=0, picked=0, hits=0;
+  const rows=gs.map(g=>{ const f=RESULTS[g[0]], w=+me.wagers[g[0]]||1, aw=f[0]>f[1]?g[2]:f[1]>f[0]?g[3]:"";
+    const s=gamePts(g,f,me), L=lineInfo(g[0],g[2],g[3]);
+    let body;
+    if(s.has){ picked++; const pts=s.sum*w; tot+=pts; const hit=s.win>0||s.atsR==="hit"||s.ouR==="hit"; if(hit) hits++;
+      const line=s.sum>=110?"Called it. Frame this one.":s.sum>=60?"Cashed. Nice read.":hit?"Some of it hit. We'll take it.":s.sum>=20?"Close, but the book wins this one.":"Ouch. Delete this from your phone.";
+      body=(s.pk?'<div class="row"><span>Your score call</span><span>'+esc(g[2])+' '+s.pk[0]+' – '+s.pk[1]+' '+esc(g[3])+'</span></div>':'')+
+        breakdown(s,L)+
+        '<div class="row"><span>'+esc(line)+' (+'+w*100+')</span><span class="pts">'+fmtN(pts)+'</span></div>';
+      return '<div class="rg'+(hit?" hit":"")+'"><div class="top"><b>'+esc(g[2])+' '+f[0]+' – '+f[1]+' '+esc(g[3])+'</b><span class="pending">'+(aw?esc(aw)+" won":"Tie")+'</span></div>'+body+'</div>'; }
+    return '<div class="rg"><div class="top"><b>'+esc(g[2])+' '+f[0]+' – '+f[1]+' '+esc(g[3])+'</b><span class="pending">No pick</span></div></div>'; }).join("");
+  const sum=picked?'<div class="sum"><span class="pending">'+hits+' of '+picked+' games cashed something · slate total</span><b>'+fmtN(tot)+'</b></div>':'<p class="pending" style="margin:0">You sat this one out. Picks open again next game day.</p>';
+  return '<div class="card recap"><div class="eyebrow"><span>Slate recap · '+esc(fmtDay(day))+'</span><span>'+gs.length+' final'+(gs.length===1?"":"s")+'</span></div><h2>'+esc(when)+' results</h2>'+rows+sum+'</div>';
+}
+function renderHome(){
+  const box=$("home"); if(!box) return;
+  const d=me.days[TODAY], done=Array.isArray(d)&&d.length===5, played=run.ans.filter(Boolean).length;
+  const chalk='<svg class="chalk" viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">'+
+    '<line x1="8" y1="70" x2="152" y2="70" stroke-dasharray="4 5"/>'+
+    [24,48,72,96,120].map(x=>'<circle cx="'+x+'" cy="82" r="7"/>').join("")+
+    '<path d="M24 75 C24 50 30 30 46 18"/><path d="M40 22 46 18 46 25"/>'+
+    '<path d="M120 75 L120 40 L146 22"/><path d="M139 22 146 22 143 29"/>'+
+    '<path d="M96 75 C100 55 110 50 126 50"/><path d="M120 46 126 50 120 54"/>'+
+    '<path d="M60 40 l10 10 M70 40 l-10 10"/><path d="M100 22 l10 10 M110 22 l-10 10"/><path d="M80 52 l8 8 M88 52 l-8 8"/></svg>';
+  let todayBody;
+  if(done){ const pts=todayQuizPts(); todayBody='<div class="statusline"><b>'+fmtN(pts)+'</b><span class="pending" style="font-size:15px">/ 1,500 today · '+d.map(x=>SQ[colorOf(x.b)]).join("")+'</span></div><button class="btn primary big" id="hGo">See your results</button>'; }
+  else if(played){ todayBody='<p class="pending" style="font-size:15px">Round '+(played+1)+' of 5 is waiting. Your wagers left: '+leftW().map(w=>"+"+w*100).join(", ")+'.</p><button class="btn primary big" id="hGo">Finish today\'s five</button>'; }
+  else todayBody='<p class="pending" style="font-size:15px">Five rounds. 30 seconds each. Wager +100 to +500 on every one.</p><button class="btn primary big" id="hGo">Play today\'s five</button>';
+  const {r}=rating(liveMe()); const asc=[...TIERS].reverse(); const ci=asc.findIndex((x,i)=>r>=x[0]&&(i===asc.length-1||r<asc[i+1][0]));
+  const lo=asc[ci][0], hi=ci<asc.length-1?asc[ci+1][0]:999, pct=Math.max(0,Math.min(100,100*(r-lo)/(hi-lo)));
+  const ladder='<div class="ladder">'+[...asc].reverse().map((x,j)=>{ const i=asc.length-1-j; return '<div class="rung'+(i===ci?" cur":i<ci?" done":"")+'"><span class="th">'+x[0]+'+</span><span class="nm">'+x[1]+'</span>'+(i===ci?'<span class="you">YOU '+r+'</span>':'<span></span>')+'</div>'; }).join("")+'</div>';
+  const next=ci<asc.length-1?asc[ci+1]:null;
+  const upcoming=SLATE.map(g=>({id:g[0],start:new Date(g[1]),away:g[2],home:g[3],pw:pwOf(g),label:g[6]})).filter(g=>!RESULTS[g.id]&&g.start.getTime()>Date.now()-4*3600e3).sort((a,b)=>a.start-b.start).slice(0,16);
+  const tag=l=>/Thursday/.test(l)?"TNF":/Sunday/.test(l)?"SNF":/Monday/.test(l)?"MNF":"";
+  const mu=upcoming.length?'<div class="mus">'+upcoming.map(g=>{ const mA=mlOf(g.id,g.pw,0), mH=mlOf(g.id,g.pw,1); const favA=g.pw&&g.pw[0]>g.pw[1], favH=g.pw&&g.pw[1]>g.pw[0];
+      const tn=keyOf(g.start)===TODAY;
+      return '<div class="mu'+(tn?" tonight":"")+'"><div class="when"><span>'+(tn?"Tonight":esc(g.start.toLocaleDateString(undefined,{weekday:"short"})))+' '+esc(fmtTime(g.start))+'</span><span class="tg">'+tag(g.label)+'</span></div>'+
+        '<div class="tm'+(favA?" fav":"")+'"><b>'+esc(g.away)+'</b><small>'+esc(RECORDS[g.away]||"")+'</small><span>'+fmtML(mA)+'</span></div>'+
+        '<div class="tm'+(favH?" fav":"")+'"><b>@'+esc(g.home)+'</b><small>'+esc(RECORDS[g.home]||"")+'</small><span>'+fmtML(mH)+'</span></div>'+(lineOf(g.id)?'<div class="when"><span>'+esc(lineOf(g.id))+'</span></div>':'')+'</div>'; }).join("")+'</div>':'<p class="pending">The next slate posts soon.</p>';
+  box.innerHTML='<div class="card today">'+chalk+'<div class="eyebrow"><span>Daily Five · '+esc(fmtDay(now))+'</span><span id="hCount"></span></div><h2>'+(done?"Today's final":"Today's five")+'</h2>'+todayBody+'</div>'+
+    recapHTML()+'<div class="card"><div class="eyebrow"><span>Your rank</span><span>'+esc($("cRank").textContent)+'</span></div><h2>'+esc(tierOf(r))+'</h2>'+
+      (next?'<div class="prog" aria-hidden="true"><i style="width:'+pct.toFixed(1)+'%"></i></div><p class="pending" style="font-size:15px;margin:0">'+(next[0]-r)+' Ball Knowledge to <b>'+esc(next[1])+'</b>. A +500 that hits is worth up to about '+Math.round(6*5*(1-(0.25+0.5*r/1000)))+'.</p>':'<p class="pending" style="font-size:15px;margin:0">Top tier. Defend it.</p>')+ladder+'</div>'+
+    '<div class="card"><div class="eyebrow"><span>This week</span><span>'+(LIVE?"Game day":"")+'</span></div><h2>Upcoming matchups</h2>'+mu+
+      (LIVE?'<button class="btn primary big" id="hSlate">Make tonight\'s picks</button>':'<p class="pending" style="margin:0">On game days, call these scores and wager on them for bonus Ball Knowledge.</p>')+'</div>';
+  $("hGo").onclick=()=>setTab("daily"); const hs=$("hSlate"); if(hs) hs.onclick=()=>setTab("slate");
+}
+
+// ---- Leaderboard ----
+function renderLeaderboard(){
+  const box=$("lb");
+  if(social==="off"){ box.innerHTML='<p class="pending">The leaderboard is offline right now. Your progress still saves on this device.</p>'; $("cRank").textContent="–"; return; }
+  if(social!=="on"){ box.innerHTML='<p class="pending">'+(social==="slow"?"The leaderboard can't be reached yet. Your progress saves on this device.":"Loading…")+'</p>'; return; }
+  const rows=others.filter(o=>o.handle&&o.id!==uid).map(o=>{ const rt=rating(o); return {id:o.id,h:String(o.handle).slice(0,20),r:rt.r,n:rt.n}; });
+  const mr=rating(me); rows.push({id:uid,h:me.handle||"You",r:mr.r,n:mr.n});
+  rows.sort((a,b)=>b.r-a.r||b.n-a.n); const mi=rows.findIndex(x=>x.id===uid);
+  $("cRank").textContent="#"+(mi+1)+(rows.length>1?" / "+rows.length:"");
+  const top=rows.slice(0,25); if(mi>=25) top.push(rows[mi]);
+  box.innerHTML='<table class="lb"><thead><tr><th>#</th><th>Player</th><th>Tier</th><th class="r">BKS</th></tr></thead><tbody>'+
+    top.map(x=>'<tr'+(x.id===uid?' class="me"':'')+'><td>'+(rows.indexOf(x)+1)+'</td><td></td><td class="t">'+tierOf(x.r)+(x.n<10?" · prov.":"")+'</td><td class="r">'+x.r+'</td></tr>').join("")+'</tbody></table>'+
+    (rows.length>1?'<p class="pending" style="margin-top:8px">You\'re in the top '+Math.max(1,Math.round(100*(mi+1)/rows.length))+'% of '+rows.length+' players.</p>':'');
+  [...box.querySelectorAll("tbody tr")].forEach((tr,i)=>{ tr.children[1].textContent=top[i].h+(top[i].id===uid?" (you)":""); });
+}
+function renderSocial(){ renderHandle(); renderLeaderboard(); renderBoard(); if(tab==="home") renderHome(); else if(tab==="slate") renderCrowd(); else if(run.phase==="done"||run.phase==="reveal"){ const y=window.scrollY; renderDaily(); if(window.scrollTo) window.scrollTo({top:y}); } }
+
+// ---- Boot ----
+$("foot").textContent="Questions, games, odds and records are real, from the "+DATA_AS_OF+" data feed and verified football history. Lines are DraftKings odds via ESPN.";
+$("tabHome").onclick=()=>setTab("home"); $("tabDaily").onclick=()=>setTab("daily");
+if(LIVE){ $("tabSlate").hidden=false; $("tabSlate").textContent="Slate ("+games.length+")"; $("tabSlate").onclick=()=>setTab("slate"); }
+if(run.phase==="question"&&Date.now()>run.deadline){ answer(null,true); }
+renderBoard(); renderHandle(); renderLeaderboard(); setTab(["category","question","reveal"].includes(run.phase)?"daily":"home");
+if(LIVE) setInterval(()=>{ if(tab==="slate"&&games.some(x=>isLocked(x)&&$("in-a-"+x.id))) renderSlate(); },30000);
+})();
+</script>
+
+</body>
+</html>
