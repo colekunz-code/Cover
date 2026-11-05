@@ -256,9 +256,9 @@ textarea.copybox{width:100%;font:14px var(--mono);border-radius:8px;border:1px s
 .statusline{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-variant-numeric:tabular-nums}
 .statusline b{font-family:var(--display);font-weight:900;font-size:44px;line-height:1}
 .ladder{display:grid;gap:6px}
-.rung{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.rung{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;border:1px solid var(--line);font-variant-numeric:tabular-nums}
 .rung .th{font:700 13px var(--mono);color:var(--muted)}
-.rung .nm{font-family:var(--display);font-weight:700;font-size:20px;text-transform:uppercase}
+.rung .nm{font-family:var(--display);font-weight:700;font-size:18px;text-transform:uppercase;line-height:1.05;min-width:0}
 .rung.done{opacity:.55}
 .rung.cur{border-color:var(--gold);background:color-mix(in srgb, var(--gold-bg) 20%, transparent)}
 .rung .you{font:700 12px var(--mono);background:var(--ink);color:var(--bg);padding:2px 8px;border-radius:999px}
@@ -333,9 +333,9 @@ textarea.copybox{width:100%;font:14px var(--mono);border-radius:8px;border:1px s
       <span class="mode" id="mode">Daily</span>
     </div>
     <div class="bks" aria-live="polite">
-      <span class="num" id="bksNum">500</span>
+      <span class="num" id="bksNum">300</span>
       <span class="lbl">Ball Knowledge Score</span>
-      <span class="tier" id="bksTier">Starter</span>
+      <span class="tier" id="bksTier">Practice Squad</span>
       <span class="meter" aria-hidden="true"><i id="bksMeter" style="width:44%"></i></span>
       <span class="sub" id="bksSub"></span>
     </div>
@@ -456,76 +456,96 @@ const QUESTIONS=[
  {"k": "long", "q": "DJ Moore's longest catch vs Baltimore in Week 8?", "ans": 49, "tol": 15, "unit": "yards", "f": "49 yards. Moore finished with 4 catches, 82 yards and a TD."},
  {"k": "scored", "q": "Week 1, Broncos at Chiefs. 3rd quarter, 60-yard TD run. Who broke it?", "o": ["Kenneth Walker III", "Patrick Mahomes", "Rashee Rice", "Travis Kelce"], "a": 0, "f": "Walker went 60 on the first drive of the 3rd and finished with 173 rushing yards."},
  {"k": "match", "q": "Started his college career at Alabama, then transferred to Oklahoma.", "o": ["Kyler Murray", "Jalen Hurts", "Baker Mayfield", "Tua Tagovailoa"], "a": 1, "f": "Jalen Hurts. Murray started at Texas A&M, Mayfield at Texas Tech."},
- {"k": "ou", "q": "Week 3 vs Arizona: Christian McCaffrey rushing yards. Over or under 84.5?", "o": ["Over", "Under"], "a": 1, "f": "Under. 75 yards on 15 carries, plus a 1-yard TD."},
- {"k": "closest", "q": "Week 5 vs the 49ers: how many field goals did Seahawks K Jason Myers make?", "ans": 5, "tol": 3, "unit": "field goals", "f": "5 for 5, from 40 to 50 yards. Seattle still lost 32-29."},
- {"k": "scored", "q": "Week 7, Patriots at Bears (TNF). 2nd quarter, 0:03 left, 48-yard TD catch from Drake Maye. Who caught it?", "o": ["Hunter Henry", "Rhamondre Stevenson", "Eli Raridon", "A.J. Brown"], "a": 1, "f": "Rhamondre Stevenson, out of the backfield. He finished with 93 receiving yards."},
- {"k": "cap", "q": "Two of these are real. Which one is cap?", "o": ["Justin Jefferson played college football at Alabama.", "Puka Nacua set the rookie record with 105 catches in 2023.", "Ja'Marr Chase and Justin Jefferson were teammates at LSU."], "a": 0, "f": "Jefferson played at LSU, alongside Chase."},
- {"k": "duel", "q": "Single-game rushing yards. Who ran for more?", "o": ["Kenneth Walker III (KC vs DEN, Week 1)", "Javonte Williams (DAL, Week 7)"], "a": 0, "f": "Walker 173. Javonte Williams 155 on 25 carries."},
- {"k": "duel", "q": "Patriots at Bears, Week 7: who had more receiving yards?", "o": ["Hunter Henry (NE)", "Colston Loveland (CHI)"], "a": 0, "f": "Henry 71, Loveland 69. Both had 7 catches."},
- {"k": "long", "q": "Week 4 at Carolina: Lions K Jake Bates' longest field goal?", "ans": 54, "tol": 12, "unit": "yards", "f": "54 yards. Bates made all 4 of his field goals."},
- {"k": "cap", "q": "49ers at Seahawks, Week 5. Two are real. Which one is cap?", "o": ["Jason Myers made all 5 of his field goals.", "Sam Darnold threw 3 touchdown passes.", "Seattle lost 32-29."], "a": 1, "f": "Darnold threw 1 TD, to Jaxon Smith-Njigba."},
- {"k": "scored", "q": "Week 1, Bears at Panthers. 3rd quarter, 61-yard TD run. Who scored it?", "o": ["D'Andre Swift", "Kyle Monangai", "Caleb Williams", "Cole Kmet"], "a": 1, "f": "Kyle Monangai, on his way to 100 yards on 10 carries. Chicago won 59-37."},
- {"k": "long", "q": "Week 1 vs Denver: Travis Kelce's longest catch?", "ans": 59, "tol": 15, "unit": "yards", "f": "59 yards. Kelce had only 3 catches, for 71 yards."},
- {"k": "scored", "q": "Week 1, Bucs at Bengals. 1st quarter, 2-yard TD catch from Joe Burrow. Who caught it?", "o": ["Ja'Marr Chase", "Mike Gesicki", "Tee Higgins", "Chase Brown"], "a": 1, "f": "Mike Gesicki. Cincinnati won 33-27, with Evan McPherson hitting 4 field goals."},
- {"k": "long", "q": "Week 7 vs New England: Luther Burden III's longest catch?", "ans": 58, "tol": 15, "unit": "yards", "f": "58 yards. Burden had 4 catches for 130."},
- {"k": "duel", "q": "Single-game passing yards. Who threw for more?", "o": ["Brock Purdy (SF vs ARI, Week 3)", "Bryce Young (CAR at PHI, Week 6)"], "a": 0, "f": "Purdy 297 with 4 TDs on only 15 completions. Young 281."},
- {"k": "match", "q": "His father pitched in Major League Baseball.", "o": ["Josh Allen", "Patrick Mahomes", "Joe Burrow", "Justin Herbert"], "a": 1, "f": "Patrick Mahomes. His dad, Pat Mahomes, pitched in the majors."},
- {"k": "closest", "q": "Tee Higgins' receiving yards vs Tennessee in Week 8?", "ans": 155, "tol": 45, "unit": "yards", "f": "155 yards and 2 TDs on 10 catches."},
- {"k": "scored", "q": "Week 7, Patriots at Bears. 2nd quarter, 0:21 left, 24-yard TD catch from Caleb Williams. Who caught it?", "o": ["Colston Loveland", "Rome Odunze", "Luther Burden III", "D'Andre Swift"], "a": 2, "f": "Luther Burden III, who had 130 yards on 4 catches. Loveland scored in the 3rd."},
- {"k": "duel", "q": "Single-game tackles. Who had more?", "o": ["Fred Warner (SF vs ARI, Week 3)", "Alex Singleton (DEN at KC, Week 1)"], "a": 0, "f": "Warner 17, Singleton 16."},
- {"k": "cap", "q": "Two of these are real. Which one is cap?", "o": ["Aaron Rodgers was the No. 1 overall pick in 2005.", "Kyler Murray was a first-round pick of the Oakland A's.", "Russell Wilson was drafted by the Colorado Rockies."], "a": 0, "f": "Rodgers went 24th. Alex Smith went first."},
- {"k": "ou", "q": "Titans at Bengals: Tony Pollard rushing yards. Over or under 109.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 117 yards and 2 TDs, including a 40-yarder."},
- {"k": "defense", "q": "Raiders at Jets: who led the game with 14 tackles?", "o": ["Nakobe Dean", "Jamien Sherwood", "Jeremy Chinn", "Quay Walker"], "a": 1, "f": "Jamien Sherwood. Nakobe Dean had 12 for Vegas."},
- {"k": "defense", "q": "Week 1 at Arrowhead: which Bronco intercepted Patrick Mahomes?", "o": ["Riley Moss", "Talanoa Hufanga", "Brandon Jones", "Alex Singleton"], "a": 2, "f": "Brandon Jones. KC won anyway, 31-10."},
- {"k": "cap", "q": "Lions at Panthers, Week 4. Two are real. Which one is cap?", "o": ["Jake Bates made 4 field goals.", "Carolina won by 10.", "Jared Goff threw 52 passes."], "a": 1, "f": "Carolina won by 6, 32-26."},
- {"k": "duel", "q": "Single-game rushing yards. Who ran for more?", "o": ["Chuba Hubbard (CAR at PHI, Week 6)", "D'Andre Swift (CHI at CAR, Week 1)"], "a": 1, "f": "Swift 124 with 3 TDs. Hubbard 120 on 28 carries."},
- {"k": "long", "q": "Week 1 vs the Bucs: Evan McPherson's longest field goal?", "ans": 58, "tol": 12, "unit": "yards", "f": "58 yards. He went 4 for 4: 20, 55, 58 and 32."},
- {"k": "scored", "q": "Week 5, 49ers at Seahawks. 2nd quarter, 0:18 left: a fumble recovered in the end zone for a 49ers TD. Who recovered it?", "o": ["Fred Warner", "Gracen Halton", "Deommodore Lenoir", "Renardo Green"], "a": 1, "f": "Gracen Halton forced the fumble and fell on it in the end zone. SF won 32-29."},
- {"k": "closest", "q": "Week 3 at San Francisco: how many passes did Jacoby Brissett complete?", "ans": 38, "tol": 10, "unit": "completions", "f": "38 of 52 for 280 yards and 2 TDs, in a 36-30 loss."},
- {"k": "duel", "q": "Tetairoa McMillan: when did he have more receiving yards?", "o": ["Week 1 vs Chicago", "Week 6 at Philadelphia"], "a": 1, "f": "Week 6: 86 yards. Week 1: 75."},
  {"k": "match", "q": "A 2017 fifth-round pick out of Iowa who became an All-Pro tight end.", "o": ["T.J. Hockenson", "George Kittle", "Sam LaPorta", "Noah Fant"], "a": 1, "f": "George Kittle. All four are Iowa tight ends; the other three went in the first two rounds."},
- {"k": "ou", "q": "Week 1 at Carolina: Caleb Williams total TDs (passing + rushing). Over or under 3.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 2 passing and 2 rushing."},
- {"k": "scored", "q": "Week 2, Lions at Bills (TNF). 1st quarter, 43-yard TD catch from Josh Allen. Who caught it?", "o": ["Dalton Kincaid", "Dawson Knox", "Joshua Palmer", "James Cook"], "a": 2, "f": "Joshua Palmer. Kincaid, Knox and Cook all scored later in Buffalo's 41-31 win."},
- {"k": "scored", "q": "Week 7, Giants at Texans. Overtime, 30-yard TD run to win it. Who scored for New York?", "o": ["Cam Skattebo", "Tyrone Tracy Jr.", "Jameis Winston", "Devin Singletary"], "a": 3, "f": "Devin Singletary walked it off, 27-21. Tracy, Winston and Skattebo all scored earlier."},
- {"k": "match", "q": "Won a title with Joe Burrow at LSU and went 22nd overall in 2020.", "o": ["Ja'Marr Chase", "Justin Jefferson", "Terrace Marshall Jr.", "Clyde Edwards-Helaire"], "a": 1, "f": "Justin Jefferson. Edwards-Helaire went 32nd that year; Chase went 5th in 2021."},
- {"k": "duel", "q": "Week 8 rushing yards. Who ran for more?", "o": ["Braelon Allen (NYJ vs LV)", "Tony Pollard (TEN at CIN)"], "a": 0, "f": "Allen 147 on 21 carries. Pollard 117 on 21 with 2 TDs."},
+ {"k": "stand", "q": "Which team is still winless through Week 8?", "o": ["Dolphins", "Titans", "Chargers", "Jets"], "a": 2, "f": "The Chargers, 0-7. Miami is 1-6 and Tennessee 1-7."},
+ {"k": "scored", "q": "Week 7, Patriots at Bears. 2nd quarter, 0:21 left, 24-yard TD catch from Caleb Williams. Who caught it?", "o": ["Colston Loveland", "Rome Odunze", "Luther Burden III", "D'Andre Swift"], "a": 2, "f": "Luther Burden III, who had 130 yards on 4 catches. Loveland scored in the 3rd."},
+ {"k": "cap", "q": "Two of these are real. Which one is cap?", "o": ["Justin Jefferson played college football at Alabama.", "Puka Nacua set the rookie record with 105 catches in 2023.", "Ja'Marr Chase and Justin Jefferson were teammates at LSU."], "a": 0, "f": "Jefferson played at LSU, alongside Chase."},
+ {"k": "closest", "q": "Week 1 vs Denver: how many rushing yards did Kenneth Walker III have?", "ans": 173, "tol": 61, "unit": "yards", "f": "173 yards on 23 carries, with a 60-yard TD."},
+ {"k": "sstat", "q": "How many catches does Trey McBride have through Week 8?", "ans": 66, "tol": 18, "unit": "catches", "f": "66, the most in the NFL among the top receivers."},
+ {"k": "lead", "q": "Through Week 8, who leads the NFL in receiving yards?", "o": ["CeeDee Lamb", "Jaxon Smith-Njigba", "Tee Higgins", "Puka Nacua"], "a": 1, "f": "Jaxon Smith-Njigba: 985 yards and 9 TDs on 64 catches. Next up is Tee Higgins with 726."},
+ {"k": "defense", "q": "Which of these pass rushers has the most sacks through Week 8?", "o": ["Aidan Hutchinson", "Dexter Lawrence II", "Chase Young", "Quinnen Williams"], "a": 2, "f": "Chase Young, 7. The other three have 5 apiece."},
  {"k": "ou", "q": "Week 6 at Philadelphia: Chuba Hubbard carries. Over or under 24.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 28 carries for 120 yards and a TD."},
- {"k": "ou", "q": "Week 1 vs Chicago: Bryce Young passing yards. Over or under 330.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 361 yards and 3 TDs, in a 59-37 loss."},
- {"k": "long", "q": "Week 6 at Philadelphia: Panthers K Ryan Fitzgerald's longest field goal?", "ans": 52, "tol": 12, "unit": "yards", "f": "52 yards. Carolina won 25-14."},
- {"k": "defense", "q": "Eagles at Commanders: which Commander intercepted Tanner McKee?", "o": ["Nick Cross", "Rasul Douglas", "Frankie Luvu", "Sonny Styles"], "a": 1, "f": "Rasul Douglas. Washington also had 5 sacks from 5 different players."},
- {"k": "duel", "q": "Single-game sacks. Who had more?", "o": ["Zach Allen (DEN at KC, Week 1)", "Jacob Martin (TEN at CIN, Week 8)"], "a": 1, "f": "Martin 3, Allen 2."},
- {"k": "scored", "q": "Week 2, Lions at Bills. 4th quarter, 27-yard TD catch with 1:48 left. Who scored for Detroit?", "o": ["Sam LaPorta", "Jahmyr Gibbs", "Jameson Williams", "Amon-Ra St. Brown"], "a": 3, "f": "Amon-Ra St. Brown, his second TD of the night. Gibbs and LaPorta also scored."},
- {"k": "match", "q": "Played college football at Cincinnati.", "o": ["George Kittle", "Travis Kelce", "Mark Andrews", "Rob Gronkowski"], "a": 1, "f": "Travis Kelce. Kittle went to Iowa, Andrews to Oklahoma, Gronk to Arizona."},
+ {"k": "scored", "q": "Week 1, Bears at Panthers. 3rd quarter, 61-yard TD run. Who scored it?", "o": ["D'Andre Swift", "Kyle Monangai", "Caleb Williams", "Cole Kmet"], "a": 1, "f": "Kyle Monangai, on his way to 100 yards on 10 carries. Chicago won 59-37."},
+ {"k": "closest", "q": "Week 5 vs the 49ers: how many field goals did Seahawks K Jason Myers make?", "ans": 5, "tol": 3, "unit": "field goals", "f": "5 for 5, from 40 to 50 yards. Seattle still lost 32-29."},
  {"k": "cap", "q": "Colts at Chiefs, Week 2. Two are real. Which one is cap?", "o": ["The game went to overtime.", "Three field goals were kicked in OT.", "Jonathan Taylor caught the Colts' first TD."], "a": 2, "f": "Tyler Warren caught it. Taylor ran for 2 TDs."},
- {"k": "closest", "q": "How many passing yards did Geno Smith throw for vs the Raiders?", "ans": 290, "tol": 70, "unit": "yards", "f": "290 yards, 2 TDs, 1 INT, and the Jets still lost 38-33."},
- {"k": "ou", "q": "Chiefs at Broncos: Emmett Johnson receiving yards. Over or under 99.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 128 yards on 5 catches, 73 of them on one TD."},
- {"k": "scored", "q": "Week 3, Cardinals at 49ers. 4th quarter, 20-yard TD catch with 1:36 left. Who sealed it for San Francisco?", "o": ["George Kittle", "Jordan Watkins", "Mike Evans", "Christian McCaffrey"], "a": 0, "f": "George Kittle, his second TD of the day (6 catches, 82 yards). SF won 36-30."},
- {"k": "duel", "q": "Single-game receiving yards. Who had more?", "o": ["Jalen Coker (CAR vs CHI, Week 1)", "Luther Burden III (CHI vs NE, Week 7)"], "a": 0, "f": "Coker 138 on 8 catches. Burden 130 on 4."},
- {"k": "defense", "q": "Week 7, Patriots at Bears: who led the game in tackles?", "o": ["Marcus Jones", "Dillon Thieneman", "Christian Elliss", "Craig Woodson"], "a": 2, "f": "Christian Elliss with 13. Marcus Jones had 9 and a sack."},
- {"k": "closest", "q": "Week 1 at Carolina: how many points did the Bears score?", "ans": 59, "tol": 20, "unit": "points", "f": "59, in a 59-37 win. Both teams combined for 96."},
- {"k": "scored", "q": "Week 3, Cardinals at 49ers. 1st quarter: a 2-yard catch turned into an 80-yard TD on a lateral. Who took the lateral to the house?", "o": ["Mike Evans", "Christian McCaffrey", "Deebo Samuel Sr.", "George Kittle"], "a": 2, "f": "Mike Evans caught it and pitched to Deebo Samuel Sr., who went 80 yards. ESPN credits Deebo with 80 receiving yards on zero catches."},
- {"k": "long", "q": "Week 2 vs the Colts: how long was Harrison Butker's overtime game-winner?", "ans": 40, "tol": 12, "unit": "yards", "f": "40 yards. OT had three field goals: Butker from 31, Spencer Shrader from 38, then Butker from 40."},
- {"k": "cap", "q": "Lions at Bills, Week 2. Two are real. Which one is cap?", "o": ["Amon-Ra St. Brown caught 2 TDs.", "Josh Allen accounted for 5 TDs.", "Detroit led 14-0 after the 1st quarter."], "a": 2, "f": "Buffalo led 14-0 after one."},
- {"k": "defense", "q": "Week 1 at Kansas City: which Bronco had 2 sacks?", "o": ["Zach Allen", "Dondrea Tillman", "Talanoa Hufanga", "Riley Moss"], "a": 0, "f": "Zach Allen, 2 sacks and 5 tackles."},
- {"k": "scored", "q": "Titans at Bengals: who caught Cam Ward's 15-yard TD in the 4th?", "o": ["C. Dike", "W. Robinson", "G. Helm", "T. Pollard"], "a": 1, "f": "Wan'Dale Robinson, then Gunnar Helm caught the 2-point try."},
- {"k": "cap", "q": "Cardinals at 49ers, Week 3. Two are real. Which one is cap?", "o": ["Brock Purdy threw 2 interceptions.", "Fred Warner made 17 tackles.", "Jacoby Brissett completed 38 passes."], "a": 0, "f": "Purdy threw 0 picks and 4 TDs."},
- {"k": "long", "q": "George Pickens' longest catch vs Arizona?", "ans": 37, "tol": 12, "unit": "yards", "f": "37 yards, one of just 2 catches for 48."},
- {"k": "defense", "q": "Titans at Bengals: who led the game with 14 tackles?", "o": ["Jordan Battle", "Anthony Hill Jr.", "Kevin Winston Jr.", "Barrett Carter"], "a": 1, "f": "Anthony Hill Jr. of Tennessee. Jordan Battle had 12 for Cincinnati."},
- {"k": "scored", "q": "Week 5, Lions at Cardinals. 3rd quarter, 39-yard TD catch from Jared Goff. Who caught it?", "o": ["Sam LaPorta", "Jameson Williams", "Amon-Ra St. Brown", "Jahmyr Gibbs"], "a": 1, "f": "Jameson Williams, his second TD of the game (8 and 39). Detroit won 45-21."},
- {"k": "defense", "q": "Week 1, Broncos at Chiefs: who led the game in tackles?", "o": ["L'Jarius Sneed", "Alex Singleton", "Drue Tranquill", "Nick Bolton"], "a": 1, "f": "Alex Singleton with 16. Sneed led KC with 8."},
- {"k": "ou", "q": "Raiders at Jets: Brock Bowers receiving yards. Over or under 85.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 92 yards and 2 TDs on 7 catches."},
- {"k": "defense", "q": "Ravens at Bills: which Bill intercepted Joe Fagnano?", "o": ["Cole Bishop", "Davison Igbinosun", "Greg Rousseau", "Landon Jackson"], "a": 1, "f": "Davison Igbinosun. Buffalo also had 4 sacks."},
- {"k": "cap", "q": "Bears at Panthers, Week 1. Two are real. Which one is cap?", "o": ["The Bears scored 59 points.", "Kyle Monangai ran for 100 yards on 10 carries.", "Caleb Williams threw 4 touchdown passes."], "a": 2, "f": "Williams threw 2 TDs and ran for 2 more."},
- {"k": "scored", "q": "Week 2, Colts at Chiefs (SNF). 2nd quarter, 24-yard TD run. Who scored for Indianapolis?", "o": ["Daniel Jones", "Tyler Warren", "Jonathan Taylor"], "a": 2, "f": "Jonathan Taylor, who added a 5-yard TD in the 4th. Tyler Warren caught the Colts' first TD."},
+ {"k": "match", "q": "His father pitched in Major League Baseball.", "o": ["Josh Allen", "Patrick Mahomes", "Joe Burrow", "Justin Herbert"], "a": 1, "f": "Patrick Mahomes. His dad, Pat Mahomes, pitched in the majors."},
+ {"k": "stand", "q": "Which AFC West team is 6-2?", "o": ["Chiefs", "Raiders", "Chargers", "Broncos"], "a": 3, "f": "Denver 6-2. Kansas City 5-2, Las Vegas 4-4, the Chargers 0-7."},
+ {"k": "scored", "q": "Week 1, Bucs at Bengals. 1st quarter, 2-yard TD catch from Joe Burrow. Who caught it?", "o": ["Ja'Marr Chase", "Mike Gesicki", "Tee Higgins", "Chase Brown"], "a": 1, "f": "Mike Gesicki. Cincinnati won 33-27, with Evan McPherson hitting 4 field goals."},
+ {"k": "long", "q": "Week 2 vs the Colts: how long was Harrison Butker's overtime game-winner?", "o": ["Under 20", "20–39", "40–59", "60+"], "a": 2, "f": "40 yards. OT had three field goals: Butker from 31, Spencer Shrader from 38, then Butker from 40."},
  {"k": "closest", "q": "How many TD passes did Joe Burrow throw vs Tennessee?", "ans": 5, "tol": 3, "unit": "TDs", "f": "5, plus a rushing TD to win it in overtime."},
- {"k": "closest", "q": "Week 1 vs Denver: how many rushing yards did Kenneth Walker III have?", "ans": 173, "tol": 50, "unit": "yards", "f": "173 yards on 23 carries, with a 60-yard TD."},
- {"k": "defense", "q": "Week 1 vs Chicago: how many tackles did Panthers LB Devin Lloyd make?", "ans": 13, "tol": 5, "unit": "tackles", "f": "13 tackles (9 solo, 4 assisted)."},
- {"k": "match", "q": "Went second overall in 2010 after starring at Nebraska.", "o": ["Gerald McCoy", "Ndamukong Suh", "Lavonte David", "Prince Amukamara"], "a": 1, "f": "Ndamukong Suh, to Detroit. Gerald McCoy went third out of Oklahoma."},
- {"k": "scored", "q": "Week 6, Commanders at 49ers (MNF). Two 1-yard TD runs, one in the 1st and one in the 2nd. Who scored both?", "o": ["Brock Purdy", "George Kittle", "Christian McCaffrey", "Kyle Juszczyk"], "a": 2, "f": "Christian McCaffrey. Kittle caught an 11-yard TD earlier. SF won 23-17."},
+ {"k": "sstat", "q": "How many sacks does T.J. Watt have through Week 8?", "ans": 7.5, "tol": 3.5, "unit": "sacks", "f": "7.5, tied for the league lead."},
+ {"k": "sou", "q": "Jaxon Smith-Njigba receiving yards through Week 8: over or under 899.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 985."},
+ {"k": "stand", "q": "Which of these teams is 6-1?", "o": ["Chiefs", "Ravens", "Bills", "Eagles"], "a": 2, "f": "Buffalo 6-1. Kansas City is 5-2, Baltimore 4-4, Philadelphia 2-6."},
+ {"k": "scored", "q": "Week 4, Lions at Panthers (SNF). 2nd quarter, 32-yard TD catch from Bryce Young. Who caught it?", "o": ["Jalen Coker", "Chuba Hubbard", "Tetairoa McMillan", "Tommy Tremble"], "a": 2, "f": "Tetairoa McMillan, who added a 10-yard TD in the 3rd. Carolina won 32-26."},
+ {"k": "ou", "q": "Raiders at Jets: Brock Bowers receiving yards. Over or under 85.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 92 yards and 2 TDs on 7 catches."},
  {"k": "cap", "q": "Patriots at Bears, Week 7. Two are real. Which one is cap?", "o": ["Drake Maye threw for under 250 yards.", "Luther Burden III had 130 receiving yards.", "Cairo Santos hit a 58-yard field goal."], "a": 0, "f": "Maye threw for 321."},
+ {"k": "sstat", "q": "How many rushing yards does Jahmyr Gibbs have through Week 8 (7 games)?", "ans": 773, "tol": 200, "unit": "yards", "f": "773, with 8 rushing TDs."},
+ {"k": "stand", "q": "NFC North check: which team is 6-1?", "o": ["Bears", "Vikings", "Lions", "Packers"], "a": 1, "f": "Minnesota 6-1. Chicago 6-2, Detroit 5-2, Green Bay 5-3. Best division in football."},
+ {"k": "match", "q": "Played college football at Cincinnati.", "o": ["George Kittle", "Travis Kelce", "Mark Andrews", "Rob Gronkowski"], "a": 1, "f": "Travis Kelce. Kittle went to Iowa, Andrews to Oklahoma, Gronk to Arizona."},
+ {"k": "scored", "q": "Week 7, Giants at Texans. Overtime, 30-yard TD run to win it. Who scored for New York?", "o": ["Cam Skattebo", "Tyrone Tracy Jr.", "Jameis Winston", "Devin Singletary"], "a": 3, "f": "Devin Singletary walked it off, 27-21. Tracy, Winston and Skattebo all scored earlier."},
+ {"k": "duel", "q": "Week 8 rushing yards. Who ran for more?", "o": ["Braelon Allen (NYJ vs LV)", "Tony Pollard (TEN at CIN)"], "a": 0, "f": "Allen 147 on 21 carries. Pollard 117 on 21 with 2 TDs."},
+ {"k": "sduel", "q": "Longer catch this season: Jaxon Smith-Njigba or Christian Watson?", "o": ["Christian Watson", "Jaxon Smith-Njigba"], "a": 1, "f": "JSN 82 yards, Watson 81."},
+ {"k": "closest", "q": "Tee Higgins' receiving yards vs Tennessee in Week 8?", "ans": 155, "tol": 54, "unit": "yards", "f": "155 yards and 2 TDs on 10 catches."},
+ {"k": "match", "q": "Won a title with Joe Burrow at LSU and went 22nd overall in 2020.", "o": ["Ja'Marr Chase", "Justin Jefferson", "Terrace Marshall Jr.", "Clyde Edwards-Helaire"], "a": 1, "f": "Justin Jefferson. Edwards-Helaire went 32nd that year; Chase went 5th in 2021."},
+ {"k": "sou", "q": "Will Anderson Jr. sacks through Week 8: over or under 6.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 7.5, tied for the NFL lead."},
+ {"k": "scored", "q": "Week 6, Commanders at 49ers (MNF). Two 1-yard TD runs, one in the 1st and one in the 2nd. Who scored both?", "o": ["Brock Purdy", "George Kittle", "Christian McCaffrey", "Kyle Juszczyk"], "a": 2, "f": "Christian McCaffrey. Kittle caught an 11-yard TD earlier. SF won 23-17."},
+ {"k": "sduel", "q": "More rushing TDs this season: Javonte Williams or Kenneth Walker III?", "o": ["Javonte Williams", "Kenneth Walker III"], "a": 0, "f": "Javonte 8, Walker 6."},
+ {"k": "cap", "q": "Lions at Panthers, Week 4. Two are real. Which one is cap?", "o": ["Jake Bates made 4 field goals.", "Carolina won by 10.", "Jared Goff threw 52 passes."], "a": 1, "f": "Carolina won by 6, 32-26."},
+ {"k": "closest", "q": "Week 1 at Carolina: how many points did the Bears score?", "ans": 59, "tol": 21, "unit": "points", "f": "59, in a 59-37 win. Both teams combined for 96."},
+ {"k": "match", "q": "Went second overall in 2010 after starring at Nebraska.", "o": ["Gerald McCoy", "Ndamukong Suh", "Lavonte David", "Prince Amukamara"], "a": 1, "f": "Ndamukong Suh, to Detroit. Gerald McCoy went third out of Oklahoma."},
+ {"k": "sou", "q": "Bijan Robinson rushing yards through Week 8: over or under 750.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 780, tops in the league."},
+ {"k": "scored", "q": "Week 5, 49ers at Seahawks. 2nd quarter, 0:18 left: a fumble recovered in the end zone for a 49ers TD. Who recovered it?", "o": ["Fred Warner", "Gracen Halton", "Deommodore Lenoir", "Renardo Green"], "a": 1, "f": "Gracen Halton forced the fumble and fell on it in the end zone. SF won 32-29."},
+ {"k": "long", "q": "Week 1 vs Denver: Travis Kelce's longest catch?", "o": ["Under 20", "20–39", "40–59", "60+"], "a": 2, "f": "59 yards. Kelce had only 3 catches, for 71 yards."},
+ {"k": "sstat", "q": "Kenneth Walker III's longest run this season?", "ans": 76, "tol": 25, "unit": "yards", "f": "76 yards. He's at 770 rushing yards through Week 8."},
+ {"k": "cap", "q": "Cardinals at 49ers, Week 3. Two are real. Which one is cap?", "o": ["Brock Purdy threw 2 interceptions.", "Fred Warner made 17 tackles.", "Jacoby Brissett completed 38 passes."], "a": 0, "f": "Purdy threw 0 picks and 4 TDs."},
+ {"k": "long", "q": "Week 1 vs the Bucs: Evan McPherson's longest field goal?", "o": ["Under 40", "40–49", "50–54", "55+"], "a": 3, "f": "58 yards. He went 4 for 4: 20, 55, 58 and 32."},
+ {"k": "sou", "q": "D'Andre Swift rushing TDs through Week 8: over or under 8.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 10, the most in the NFL."},
+ {"k": "sduel", "q": "More rushing yards this season: Bucky Irving or James Cook III?", "o": ["James Cook III", "Bucky Irving"], "a": 1, "f": "Irving 728, Cook 707 (in one fewer game)."},
+ {"k": "cap", "q": "Two of these are real. Which one is cap?", "o": ["Aaron Rodgers was the No. 1 overall pick in 2005.", "Kyler Murray was a first-round pick of the Oakland A's.", "Russell Wilson was drafted by the Colorado Rockies."], "a": 0, "f": "Rodgers went 24th. Alex Smith went first."},
+ {"k": "closest", "q": "How many passing yards did Geno Smith throw for vs the Raiders?", "ans": 290, "tol": 102, "unit": "yards", "f": "290 yards, 2 TDs, 1 INT, and the Jets still lost 38-33."},
+ {"k": "sstat", "q": "How many receiving yards does Tee Higgins have through Week 8 (7 games)?", "ans": 726, "tol": 200, "unit": "yards", "f": "726, second in the NFL."},
+ {"k": "scored", "q": "Week 2, Colts at Chiefs (SNF). 2nd quarter, 24-yard TD run. Who scored for Indianapolis?", "o": ["Daniel Jones", "Tyler Warren", "Jonathan Taylor"], "a": 2, "f": "Jonathan Taylor, who added a 5-yard TD in the 4th. Tyler Warren caught the Colts' first TD."},
+ {"k": "duel", "q": "Tetairoa McMillan: when did he have more receiving yards?", "o": ["Week 1 vs Chicago", "Week 6 at Philadelphia"], "a": 1, "f": "Week 6: 86 yards. Week 1: 75."},
  {"k": "ou", "q": "Week 7 at Chicago: Rhamondre Stevenson receiving yards. Over or under 79.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 93 yards on 5 catches, including a 48-yard TD."},
- {"k": "defense", "q": "Week 3 vs Arizona: how many tackles did Fred Warner make?", "ans": 17, "tol": 6, "unit": "tackles", "f": "17 tackles. Renardo Green had 13."},
- {"k": "scored", "q": "Week 4, Lions at Panthers (SNF). 2nd quarter, 32-yard TD catch from Bryce Young. Who caught it?", "o": ["Jalen Coker", "Chuba Hubbard", "Tetairoa McMillan", "Tommy Tremble"], "a": 2, "f": "Tetairoa McMillan, who added a 10-yard TD in the 3rd. Carolina won 32-26."}
+ {"k": "long", "q": "Week 4 at Carolina: Lions K Jake Bates' longest field goal?", "o": ["Under 40", "40–49", "50–54", "55+"], "a": 2, "f": "54 yards. Bates made all 4 of his field goals."},
+ {"k": "cap", "q": "Lions at Bills, Week 2. Two are real. Which one is cap?", "o": ["Amon-Ra St. Brown caught 2 TDs.", "Josh Allen accounted for 5 TDs.", "Detroit led 14-0 after the 1st quarter."], "a": 2, "f": "Buffalo led 14-0 after one."},
+ {"k": "stand", "q": "How many teams are 6-1 or 6-2 through Week 8?", "o": ["4", "5", "6", "7"], "a": 2, "f": "Six: Bills, 49ers and Vikings at 6-1; Broncos, Steelers and Bears at 6-2."},
+ {"k": "scored", "q": "Titans at Bengals: who caught Cam Ward's 15-yard TD in the 4th?", "o": ["C. Dike", "W. Robinson", "G. Helm", "T. Pollard"], "a": 1, "f": "Wan'Dale Robinson, then Gunnar Helm caught the 2-point try."},
+ {"k": "sduel", "q": "More catches this season: Trey McBride or Jaxon Smith-Njigba?", "o": ["Trey McBride", "Jaxon Smith-Njigba"], "a": 0, "f": "McBride 66, JSN 64. JSN has way more yards though (985 to 544)."},
+ {"k": "duel", "q": "Single-game rushing yards. Who ran for more?", "o": ["Kenneth Walker III (KC vs DEN, Week 1)", "Javonte Williams (DAL, Week 7)"], "a": 0, "f": "Walker 173. Javonte Williams 155 on 25 carries."},
+ {"k": "sou", "q": "Derrick Henry rushing yards through Week 8: over or under 675.5?", "o": ["Over", "Under"], "a": 1, "f": "Under. 632 yards, with 8 TDs."},
+ {"k": "cap", "q": "Bears at Panthers, Week 1. Two are real. Which one is cap?", "o": ["The Bears scored 59 points.", "Kyle Monangai ran for 100 yards on 10 carries.", "Caleb Williams threw 4 touchdown passes."], "a": 2, "f": "Williams threw 2 TDs and ran for 2 more."},
+ {"k": "sstat", "q": "How many receiving yards does Jaxon Smith-Njigba have through Week 8?", "ans": 985, "tol": 250, "unit": "yards", "f": "985, on 64 catches with 9 TDs."},
+ {"k": "scored", "q": "Week 7, Patriots at Bears (TNF). 2nd quarter, 0:03 left, 48-yard TD catch from Drake Maye. Who caught it?", "o": ["Hunter Henry", "Rhamondre Stevenson", "Eli Raridon", "A.J. Brown"], "a": 1, "f": "Rhamondre Stevenson, out of the backfield. He finished with 93 receiving yards."},
+ {"k": "sduel", "q": "More receiving yards this season: CeeDee Lamb or Christian Watson?", "o": ["Christian Watson", "CeeDee Lamb"], "a": 1, "f": "Lamb 709, Watson 708. One. Yard."},
+ {"k": "duel", "q": "Single-game rushing yards. Who ran for more?", "o": ["Chuba Hubbard (CAR at PHI, Week 6)", "D'Andre Swift (CHI at CAR, Week 1)"], "a": 1, "f": "Swift 124 with 3 TDs. Hubbard 120 on 28 carries."},
+ {"k": "long", "q": "Week 7 vs New England: Luther Burden III's longest catch?", "o": ["Under 20", "20–39", "40–59", "60+"], "a": 2, "f": "58 yards. Burden had 4 catches for 130."},
+ {"k": "closest", "q": "Week 3 at San Francisco: how many passes did Jacoby Brissett complete?", "ans": 38, "tol": 13, "unit": "completions", "f": "38 of 52 for 280 yards and 2 TDs, in a 36-30 loss."},
+ {"k": "cap", "q": "49ers at Seahawks, Week 5. Two are real. Which one is cap?", "o": ["Jason Myers made all 5 of his field goals.", "Sam Darnold threw 3 touchdown passes.", "Seattle lost 32-29."], "a": 1, "f": "Darnold threw 1 TD, to Jaxon Smith-Njigba."},
+ {"k": "scored", "q": "Week 5, Lions at Cardinals. 3rd quarter, 39-yard TD catch from Jared Goff. Who caught it?", "o": ["Sam LaPorta", "Jameson Williams", "Amon-Ra St. Brown", "Jahmyr Gibbs"], "a": 1, "f": "Jameson Williams, his second TD of the game (8 and 39). Detroit won 45-21."},
+ {"k": "lead", "q": "Through Week 8, who leads the NFL in rushing touchdowns?", "o": ["Derrick Henry", "D'Andre Swift", "Jahmyr Gibbs", "Jonathan Taylor"], "a": 1, "f": "D'Andre Swift with 10. Henry, Gibbs and Taylor each have 8."},
+ {"k": "ou", "q": "Week 3 vs Arizona: Christian McCaffrey rushing yards. Over or under 84.5?", "o": ["Over", "Under"], "a": 1, "f": "Under. 75 yards on 15 carries, plus a 1-yard TD."},
+ {"k": "sou", "q": "Puka Nacua catches through Week 8 (he's played 6 games): over or under 50.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 56 catches in 6 games."},
+ {"k": "long", "q": "George Pickens' longest catch vs Arizona?", "o": ["Under 20", "20–39", "40–59", "60+"], "a": 1, "f": "37 yards, one of just 2 catches for 48."},
+ {"k": "defense", "q": "Which team has TWO top-10 sack leaders through Week 8?", "o": ["Vikings", "Steelers", "Texans", "Bills"], "a": 0, "f": "Minnesota: Andrew Van Ginkel (6.5) and Dallas Turner (6.0)."},
+ {"k": "stand", "q": "Which of these teams has a winning record?", "o": ["Cowboys", "Falcons", "Browns", "Colts"], "a": 2, "f": "Cleveland, 5-3. Dallas and Atlanta are 3-5, Indy 2-6."},
+ {"k": "ou", "q": "Week 1 at Carolina: Caleb Williams total TDs (passing + rushing). Over or under 3.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 2 passing and 2 rushing."},
+ {"k": "lead", "q": "Through Week 8, who leads the NFL in rushing yards?", "o": ["Jahmyr Gibbs", "Kenneth Walker III", "Bijan Robinson", "James Cook III"], "a": 2, "f": "Bijan Robinson, 780. Gibbs has 773 and Walker 770. Ten yards separate the top three."},
+ {"k": "scored", "q": "Week 3, Cardinals at 49ers. 4th quarter, 20-yard TD catch with 1:36 left. Who sealed it for San Francisco?", "o": ["George Kittle", "Jordan Watkins", "Mike Evans", "Christian McCaffrey"], "a": 0, "f": "George Kittle, his second TD of the day (6 catches, 82 yards). SF won 36-30."},
+ {"k": "sduel", "q": "More receiving yards this season: Malik Nabers or Zay Flowers?", "o": ["Malik Nabers", "Zay Flowers"], "a": 1, "f": "Flowers 608, Nabers 605."},
+ {"k": "duel", "q": "Single-game receiving yards. Who had more?", "o": ["Jalen Coker (CAR vs CHI, Week 1)", "Luther Burden III (CHI vs NE, Week 7)"], "a": 0, "f": "Coker 138 on 8 catches. Burden 130 on 4."},
+ {"k": "long", "q": "Week 6 at Philadelphia: Panthers K Ryan Fitzgerald's longest field goal?", "o": ["Under 40", "40–49", "50–54", "55+"], "a": 2, "f": "52 yards. Carolina won 25-14."},
+ {"k": "ou", "q": "Chiefs at Broncos: Emmett Johnson receiving yards. Over or under 99.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 128 yards on 5 catches, 73 of them on one TD."},
+ {"k": "duel", "q": "Single-game passing yards. Who threw for more?", "o": ["Brock Purdy (SF vs ARI, Week 3)", "Bryce Young (CAR at PHI, Week 6)"], "a": 0, "f": "Purdy 297 with 4 TDs on only 15 completions. Young 281."},
+ {"k": "defense", "q": "Through Week 8, which two players share the NFL sack lead?", "o": ["Chase Young & Greg Rousseau", "T.J. Watt & Will Anderson Jr.", "Aidan Hutchinson & Dallas Turner", "Andrew Van Ginkel & Jacob Martin"], "a": 1, "f": "T.J. Watt and Will Anderson Jr. at 7.5. Chase Young and Greg Rousseau are right behind at 7."},
+ {"k": "scored", "q": "Week 2, Lions at Bills. 4th quarter, 27-yard TD catch with 1:48 left. Who scored for Detroit?", "o": ["Sam LaPorta", "Jahmyr Gibbs", "Jameson Williams", "Amon-Ra St. Brown"], "a": 3, "f": "Amon-Ra St. Brown, his second TD of the night. Gibbs and LaPorta also scored."},
+ {"k": "sduel", "q": "More rushing yards this season: Derrick Henry or Jonathan Taylor?", "o": ["Derrick Henry", "Jonathan Taylor"], "a": 0, "f": "Henry 632, Taylor 610. Both have 8 rushing TDs."},
+ {"k": "ou", "q": "Titans at Bengals: Tony Pollard rushing yards. Over or under 109.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 117 yards and 2 TDs, including a 40-yarder."},
+ {"k": "scored", "q": "Week 3, Cardinals at 49ers. 1st quarter: a 2-yard catch turned into an 80-yard TD on a lateral. Who took the lateral to the house?", "o": ["Mike Evans", "Christian McCaffrey", "Deebo Samuel Sr.", "George Kittle"], "a": 2, "f": "Mike Evans caught it and pitched to Deebo Samuel Sr., who went 80 yards. ESPN credits Deebo with 80 receiving yards on zero catches."},
+ {"k": "sduel", "q": "More sacks this season: T.J. Watt or Greg Rousseau?", "o": ["T.J. Watt", "Greg Rousseau"], "a": 0, "f": "Watt 7.5, Rousseau 7."},
+ {"k": "duel", "q": "Patriots at Bears, Week 7: who had more receiving yards?", "o": ["Hunter Henry (NE)", "Colston Loveland (CHI)"], "a": 0, "f": "Henry 71, Loveland 69. Both had 7 catches."},
+ {"k": "ou", "q": "Week 1 vs Chicago: Bryce Young passing yards. Over or under 330.5?", "o": ["Over", "Under"], "a": 0, "f": "Over. 361 yards and 3 TDs, in a 59-37 loss."},
+ {"k": "scored", "q": "Week 2, Lions at Bills (TNF). 1st quarter, 43-yard TD catch from Josh Allen. Who caught it?", "o": ["Dalton Kincaid", "Dawson Knox", "Joshua Palmer", "James Cook"], "a": 2, "f": "Joshua Palmer. Kincaid, Knox and Cook all scored later in Buffalo's 41-31 win."}
 ];
 
 // ===== Conversion banks (6-round format starts FMT2_START) =====
@@ -584,8 +604,12 @@ function hash(s){let h=2166136261;for(const c of String(s)){h^=c.charCodeAt(0);h
 const validPick=p=>Array.isArray(p)&&p.length===2&&p.every(v=>v!==""&&v!=null&&isFinite(+v))?[+p[0],+p[1]]:null;
 const dayNum=k=>Math.round((new Date(k+"T12:00:00")-new Date(Q_START+"T12:00:00"))/864e5);
 
-const CATCOLOR={duel:"#4C8DFF",scored:"#FF4D5E",match:"#B57BFF",fact:"#B57BFF",cap:"#FF8A3D",long:"#3DD6F5",defense:"#A3B1FF",closest:"#FF77C8",ou:"#FFB547",detective:"#3DD6F5"};
-const ICP={duel:'<path d="M6 20V11M12 20V4M18 20v-6"/><path d="M3 20h18"/>',
+const CATCOLOR={lead:"#F5B82E",sduel:"#4C8DFF",sou:"#FFB547",sstat:"#FF77C8",stand:"#5EE6C8",duel:"#4C8DFF",scored:"#FF4D5E",match:"#B57BFF",fact:"#B57BFF",cap:"#FF8A3D",long:"#3DD6F5",defense:"#A3B1FF",closest:"#FF77C8",ou:"#FFB547",detective:"#3DD6F5"};
+const ICP={lead:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0z"/><path d="M7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3"/>',
+ sduel:'<path d="M4 20V9M9 20V5"/><path d="M15 20v-8M20 20V7"/><path d="M2 20h20"/>',
+ sou:'<path d="M8 20V5M4 9l4-4 4 4M16 4v15M12 15l4 4 4-4"/>',
+ sstat:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h3M13 11h3M8 15h3M13 15h3"/>',
+ stand:'<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="7" cy="6" r="1" fill="currentColor"/><circle cx="7" cy="12" r="1" fill="currentColor"/><circle cx="7" cy="18" r="1" fill="currentColor"/>',duel:'<path d="M6 20V11M12 20V4M18 20v-6"/><path d="M3 20h18"/>',
  scored:'<ellipse cx="12" cy="12" rx="9.5" ry="5.6" transform="rotate(-35 12 12)"/><path d="M9.6 14.4l4.8-4.8M10.6 11.4l2 2M12.1 9.9l2 2"/>',
  match:'<path d="M9 15l6-6"/><path d="M10.5 6.5l1.2-1.2a4 4 0 015.7 5.7l-1.2 1.2M13.5 17.5l-1.2 1.2a4 4 0 01-5.7-5.7l1.2-1.2"/>',
  cap:'<path d="M4 15.5c0-5 3.6-8.5 8-8.5s8 3.5 8 8.5"/><path d="M2.5 15.5h19l-2 3h-15z"/><path d="M12 7V4.5"/>',
@@ -605,8 +629,8 @@ function renderTicker(){ const el=$("tick"); if(!el) return; const it=[];
   if(social==="on"){ const top=others.filter(o=>o.handle).map(o=>({h:String(o.handle).slice(0,20),r:rating(o).r})).sort((a,b)=>b.r-a.r)[0]; if(top) it.unshift('<span><span class="w">#1</span> <b>'+esc(top.h)+'</b> · '+top.r+' BKS</span>'); }
   it.unshift('<span><span class="g">COVER</span> · Today\'s drive is live</span>');
   const html=it.join(""); el.innerHTML=html+html; el.style.setProperty("--tick-dur",Math.max(30,it.length*5)+"s"); }
-const CATS={long:"Longest Play",defense:"Defense",cap:"Spot the Cap",duel:"Stat Duel",scored:"Who Scored?",ou:"Over / Under",closest:"Closest Wins",detective:"Box Score Detective",match:"Match the Fact",fact:"Fact or Cap"};
-const CATSUB={long:"One player, one game. How long was his biggest play?",defense:"Real defensive box scores. Tackles, sacks, picks.",cap:"Three statements. Two are real. Find the fake.",duel:"Two real stat lines. One number. Pick the bigger one.",scored:"A real touchdown from this season. Name the guy.",ou:"A real stat line. Over or under?",closest:"Type a number. The closer you are, the more you get.",detective:"A real box score. Which game was it?",match:"A real player fact. Match it to the player.",fact:"True or made up? Call it."};
+const CATS={lead:"Season Leaders",sduel:"Season Duel",sou:"Season Over/Under",sstat:"Season Stat",stand:"Standings",long:"Longest Play",defense:"Defense",cap:"Spot the Cap",duel:"Stat Duel",scored:"Who Scored?",ou:"Over / Under",closest:"Closest Wins",detective:"Box Score Detective",match:"Match the Fact",fact:"Fact or Cap"};
+const CATSUB={lead:"Who's on top of the league right now?",sduel:"Two players, whole season. Who has more?",sou:"A season-long number. Over or under the line?",sstat:"Guess the season total. Close counts.",stand:"Records, races and who's actually good.",long:"How big was the big play? Pick the range.",defense:"Sack leaders and the league's best pass rushers.",cap:"Three statements. Two are real. Find the fake.",duel:"Two real stat lines. One number. Pick the bigger one.",scored:"A real touchdown from this season. Name the guy.",ou:"A real stat line. Over or under?",closest:"Type a number. The closer you are, the more you get.",detective:"A real box score. Which game was it?",match:"A real player fact. Match it to the player.",fact:"True or made up? Call it."};
 const SECONDS=30, WAGERS=[1,2,3,4,5];
 const ROAST_W=["That's a Jets fan answer.","The tape doesn't lie, and neither does this.","Bold. Wrong, but bold.","Someone's been watching the wrong RedZone.","Your fantasy team just felt that.","Respectfully: no."];
 const ROAST_R=["Ball knower.","That's film-room stuff.","Somebody reads box scores.","Clean. Call your bookie. (Don't.)","Scouts are taking notes.","Different breed."];
@@ -662,7 +686,7 @@ const colorOf=b=>b>=90?"g":b>0?"y":"r";
 const SQ={g:"🟩",y:"🟨",r:"🟥"};
 
 // ---- Ball Knowledge Score ----
-const TIERS=[[850,"Hall of Fame"],[700,"All-Pro"],[550,"Pro Bowl"],[400,"Starter"],[0,"Practice Squad"]];
+const TIERS=[[900,"GOAT"],[800,"Hall of Fame"],[700,"All-Pro"],[600,"Pro Bowl"],[450,"Starter"],[0,"Practice Squad"]];
 const tierOf=r=>TIERS.find(t=>r>=t[0])[1];
 function events(slip){
   const ev=[];
@@ -675,7 +699,7 @@ function events(slip){
   return ev.sort((a,b)=>a.t<b.t?-1:1);
 }
 function rating(slip){
-  let r=500; const ev=events(slip);
+  let r=300; const ev=events(slip);
   for(const e of ev){ const exp=e.kind==="q"?0.25+0.5*(r/1000):0.2+0.4*(r/1000); r=Math.max(100,Math.min(999,r+6*e.w*(e.perf-exp))); }
   return {r:Math.round(r),n:ev.length};
 }
@@ -998,7 +1022,7 @@ function renderHome(){
   else todayBody='<p class="pending" style="font-size:15px">'+(NR===6?'Six rounds, then go for two if you dare. ':'Five rounds. ')+'30 seconds each. Wager +100 to +'+TOPW*100+'.</p><button class="btn primary big" id="hGo">Play today\'s drive</button>';
   const {r}=rating(liveMe()); const asc=[...TIERS].reverse(); const ci=asc.findIndex((x,i)=>r>=x[0]&&(i===asc.length-1||r<asc[i+1][0]));
   const lo=asc[ci][0], hi=ci<asc.length-1?asc[ci+1][0]:999, pct=Math.max(0,Math.min(100,100*(r-lo)/(hi-lo)));
-  const ladder='<div class="ladder">'+[...asc].reverse().map((x,j)=>{ const i=asc.length-1-j; return '<div class="rung'+(i===ci?" cur":i<ci?" done":"")+'"><span class="th">'+x[0]+'+</span><span class="nm">'+x[1]+'</span>'+(i===ci?'<span class="you">YOU '+r+'</span>':'<span></span>')+'</div>'; }).join("")+'</div>';
+  const ladder='<div class="ladder">'+[...asc].reverse().map((x,j)=>{ const i=asc.length-1-j; return '<div class="rung'+(i===ci?" cur":i<ci?" done":"")+'"><span class="th">'+(x[0]?x[0]+'+':'Start')+'</span><span class="nm">'+x[1]+'</span>'+(i===ci?'<span class="you">'+r+'</span>':'<span></span>')+'</div>'; }).join("")+'</div>';
   const next=ci<asc.length-1?asc[ci+1]:null;
   const upcoming=SLATE.map(g=>({id:g[0],start:new Date(g[1]),away:g[2],home:g[3],pw:pwOf(g),label:g[6]})).filter(g=>!RESULTS[g.id]&&g.start.getTime()>Date.now()-4*3600e3).sort((a,b)=>a.start-b.start).slice(0,16);
   const tag=l=>/Thursday/.test(l)?"TNF":/Sunday/.test(l)?"SNF":/Monday/.test(l)?"MNF":"";
@@ -1010,7 +1034,7 @@ function renderHome(){
   box.innerHTML='<div class="card today">'+chalk+'<div class="eyebrow"><span>Daily Drive · '+esc(fmtDay(now))+'</span><span id="hCount"></span></div><h2>'+(done?"Today's final":"Today's drive")+'</h2>'+todayBody+'</div>'+
     recapHTML();
   $("rankBox").innerHTML='<div class="card"><div class="eyebrow"><span>Your rank</span><span>'+esc($("cRank").textContent)+'</span></div><h2>'+esc(tierOf(r))+'</h2>'+
-      (next?'<div class="prog" aria-hidden="true"><i style="width:'+pct.toFixed(1)+'%"></i></div><p class="pending" style="font-size:15px;margin:0">'+(next[0]-r)+' Ball Knowledge to <b>'+esc(next[1])+'</b>. A +500 that hits is worth up to about '+Math.round(6*5*(1-(0.25+0.5*r/1000)))+'.</p>':'<p class="pending" style="font-size:15px;margin:0">Top tier. Defend it.</p>')+ladder+'</div>';
+      (next?'<div class="prog" aria-hidden="true"><i style="width:'+pct.toFixed(1)+'%"></i></div><p class="pending" style="font-size:15px;margin:0">'+(next[0]-r)+' Ball Knowledge to <b>'+esc(next[1])+'</b>. A +'+TOPW*100+' that hits is worth up to about '+Math.round(6*TOPW*(1-(0.25+0.5*r/1000)))+'.</p>':'<p class="pending" style="font-size:15px;margin:0">Top tier. Defend it.</p>')+ladder+'</div>';
   $("muBox").innerHTML='<div class="card"><div class="eyebrow"><span>This week</span><span>'+(LIVE?"Game day":"")+'</span></div><h2>Upcoming matchups</h2>'+mu+
       (LIVE?'<button class="btn primary big" id="hSlate">Make tonight\'s picks</button>':'<p class="pending" style="margin:0">On game days, call these scores and wager on them for bonus Ball Knowledge.</p>')+'</div>';
   const hg=$("hGo"); if(hg) hg.onclick=()=>setTab("daily"); const hs=$("hSlate"); if(hs) hs.onclick=()=>setTab("slate");
