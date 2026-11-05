@@ -101,7 +101,7 @@ h1 span{color:var(--board-gold)}
 .catsub{text-align:center;color:var(--muted);margin:0}
 .wagers{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .wager{appearance:none;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:12px 2px;font:700 clamp(14px,4vw,18px) var(--mono);cursor:pointer;font-variant-numeric:tabular-nums}
-.wager:hover:not(:disabled){border-color:var(--ink)}
+@media (hover:hover){.wager:hover:not(:disabled){border-color:var(--ink)}}
 .wager.max{border-color:var(--gold);color:var(--gold)}
 .wager:disabled{opacity:.25;cursor:default;text-decoration:line-through}
 .wager[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -114,12 +114,15 @@ h1 span{color:var(--board-gold)}
 .opts.two{grid-template-columns:1fr 1fr}
 .opt{appearance:none;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:12px;padding:14px;font:700 17px var(--body);text-align:left;cursor:pointer;overflow-wrap:anywhere}
 .opts.two .opt{text-align:center;font-size:20px}
-.opt:hover:not(:disabled){border-color:var(--ink)}
+@media (hover:hover){.opt:hover:not(:disabled){border-color:var(--ink)}}
 .opt.right{border-color:var(--turf);background:color-mix(in srgb, var(--turf) 16%, transparent)}
 .opt.wrong{border-color:var(--red);background:color-mix(in srgb, var(--red) 14%, transparent)}
 .opt:disabled{cursor:default}
-.numrow{display:flex;gap:8px}
-.numrow input{flex:1;min-width:0;font:700 26px var(--mono);text-align:center;padding:12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.numrow{display:flex;gap:8px;min-width:0;width:100%}
+.numrow .btn{flex:0 0 auto}
+.card,.card>*{min-width:0}
+html,body{max-width:100%;overflow-x:hidden}
+.numrow input{flex:1 1 0;width:0;min-width:0;font:700 26px var(--mono);text-align:center;padding:12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
 .numrow input:focus{outline:none;border-color:var(--turf)}
 .verdict{font-family:var(--display);font-weight:900;font-size:clamp(34px,10vw,48px);text-transform:uppercase;line-height:.95;margin:0;text-align:center}
 .verdict.g{color:var(--turf)} .verdict.y{color:var(--amber)} .verdict.r{color:var(--red)}
@@ -605,7 +608,7 @@ function dCategory(box){
 function dQuestion(box){
   const q=TODAY_Q[run.i];
   let body;
-  if(q.ans!=null) body='<form class="numrow" id="nf"><label for="nv" hidden>Your answer</label><input id="nv" type="text" inputmode="decimal" autocomplete="off" placeholder="'+esc(q.unit)+'"><button class="btn primary" type="submit">Lock</button></form>';
+  if(q.ans!=null) body='<form class="numrow" id="nf"><label for="nv" hidden>Your answer</label><input id="nv" size="1" type="text" inputmode="decimal" autocomplete="off" placeholder="'+esc(q.unit)+'"><button class="btn primary" type="submit">Lock</button></form>';
   else body='<div class="opts'+(q.o.length===2?" two":"")+'">'+q.o.map((o,i)=>'<button class="opt" data-i="'+i+'">'+esc(o)+'</button>').join("")+'</div>';
   box.innerHTML='<div class="card"><div class="eyebrow"><span>'+esc(CATS[q.k])+' · <span class="wtag'+(run.w===5?" max":"")+'">+'+run.w*100+'</span></span><span class="tleft" id="tl"></span></div>'+
     '<div class="timer" aria-hidden="true"><i id="tb"></i></div><p class="q">'+esc(q.q)+'</p>'+body+'</div>';
