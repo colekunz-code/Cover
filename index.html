@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Cover: the daily NFL ball-knowledge game. Five wagered rounds a day, real slate picks on game days, and a Ball Knowledge Score.">
-<meta property="og:title" content="Cover — daily NFL ball knowledge"><meta property="og:description" content="Five rounds. 30 seconds each. Wager on what you know.">
+<meta name="description" content="The daily NFL ball-knowledge game. Five rounds, 30 seconds each. Wager +100 to +500 on what you know. Free to play.">
+<meta property="og:type" content="website"><meta property="og:url" content="https://colekunz-code.github.io/Cover/">
+<meta property="og:title" content="Cover · Daily NFL ball knowledge"><meta property="og:description" content="Five rounds. 30 seconds each. Wager on what you know. Can you beat me?">
+<meta property="og:image" content="https://colekunz-code.github.io/Cover/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://colekunz-code.github.io/Cover/og.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏈</text></svg>">
 <title>Cover</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -13,17 +16,34 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <script>
-// ===== Cover website backend: Supabase (leaderboard + saved picks) =====
-// Fill these two values from Supabase > Project Settings > API. The anon key is meant to be public.
-window.COVER_CONFIG = { supabaseUrl: "https://koiuilmpihaflgnlitxl.supabase.co", supabaseKey: "sb_publishable_3B2TCFdOQ1sx88FBDQSD7A_f2FH038-" };
+// ===== Cover website config =====
+// supabaseUrl / supabaseKey: Supabase > Project Settings > API (the publishable/anon key is meant to be public).
+// turnstileKey: Cloudflare Turnstile SITE key (public). Leave "" to skip captcha.
+// goatcounter: your GoatCounter code (the "xyz" in xyz.goatcounter.com). Leave "" to skip analytics.
+window.COVER_CONFIG = { supabaseUrl: "https://koiuilmpihaflgnlitxl.supabase.co", supabaseKey: "sb_publishable_3B2TCFdOQ1sx88FBDQSD7A_f2FH038-", turnstileKey: "", goatcounter: "", siteUrl: "https://colekunz-code.github.io/Cover/" };
 (function(){
   const cfg=window.COVER_CONFIG;
-  if(!cfg.supabaseUrl||cfg.supabaseUrl.indexOf("%%")===0||!window.supabase) return;
+  for(const k in cfg) if(String(cfg[k]).indexOf("%%")===0) cfg[k]="";
+  // ---- analytics (GoatCounter: no cookies, no personal data) ----
+  const q=[]; const send=n=>window.goatcounter.count({path:"event/"+n,title:n,event:true});
+  window.coverTrack=function(name){ try{ if(window.goatcounter&&window.goatcounter.count) send(name); else if(cfg.goatcounter) q.push(name); }catch(e){} };
+  if(cfg.goatcounter){ const s=document.createElement("script"); s.async=true; s.src="https://gc.zgo.at/count.js"; s.setAttribute("data-goatcounter","https://"+cfg.goatcounter+".goatcounter.com/count");
+    s.onload=()=>{ try{ while(q.length) send(q.shift()); }catch(e){} }; document.head.appendChild(s); }
+  // ---- leaderboard backend (Supabase) ----
+  if(!cfg.supabaseUrl||!window.supabase) return;
   const sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
+  const captcha=()=>new Promise(res=>{
+    if(!cfg.turnstileKey) return res(undefined);
+    const go=()=>{ try{ const el=document.createElement("div"); el.style.cssText="position:fixed;bottom:12px;right:12px;z-index:99"; document.body.appendChild(el);
+      window.turnstile.render(el,{sitekey:cfg.turnstileKey,appearance:"interaction-only",callback:t=>{ res(t); setTimeout(()=>el.remove(),500); },"error-callback":()=>res(undefined),"timeout-callback":()=>res(undefined)}); }catch(e){ res(undefined); } };
+    if(window.turnstile) return go();
+    const s=document.createElement("script"); s.src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; s.async=true; s.onload=go; s.onerror=()=>res(undefined); document.head.appendChild(s);
+    setTimeout(()=>res(undefined),20000);
+  });
   let uidP=null;
   const getUid=()=>uidP||(uidP=(async()=>{
     let {data:{session}}=await sb.auth.getSession();
-    if(!session){ const r=await sb.auth.signInAnonymously(); if(r.error) throw r.error; session=r.data.session; }
+    if(!session){ const token=await captcha(); const r=await sb.auth.signInAnonymously(token?{options:{captchaToken:token}}:undefined); if(r.error) throw r.error; session=r.data.session; }
     return session.user.id; })());
   const doc=id=>({
     async get(){ const {data,error}=await sb.from("slips").select("data").eq("id",id).maybeSingle(); if(error) throw error; return {exists:!!data,data:()=>data&&data.data}; },
@@ -193,6 +213,10 @@ table.lb td.r{font-family:var(--mono);font-weight:700;text-align:right} table.lb
 table.lb tr.me td{background:color-mix(in srgb, var(--gold-bg) 22%, transparent);font-weight:700}
 table.lb td.t{color:var(--muted);font-size:13px}
 .lbwrap{overflow-x:auto}
+.lbseg{display:flex;gap:6px;margin:0 0 10px}
+.lbseg button{appearance:none;flex:1;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:6px 10px;font:700 13px var(--body);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lbseg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.crewnote{font-size:14px;color:var(--muted);margin:0 0 10px}
 textarea.copybox{width:100%;font:14px var(--mono);border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px}
 .next{font:500 13px var(--mono);color:var(--muted);margin:0;text-align:center}
 .foot{font-size:12px;color:var(--muted);margin:0}
@@ -273,6 +297,7 @@ textarea.copybox{width:100%;font:14px var(--mono);border-radius:8px;border:1px s
     <div class="lbwrap" id="lb"><p class="pending">Loading…</p></div>
   </section>
   <p class="foot" id="foot"></p>
+  <p class="foot"><a href="terms.html">Terms &amp; privacy</a> · Free to play, ages 13+. No real money, no real bets.</p>
 </div>
 
 <script>
@@ -526,6 +551,13 @@ let run=store.get("cover-run-"+TODAY,{i:0,phase:"intro",w:null,deadline:0,ans:[]
 const saveRun=()=>store.set("cover-run-"+TODAY,run);
 let db=null, myRef=null, uid=null, social="loading", others=[], writing=false, dirty=false, lastDelta=null, timer=null, tab="daily";
 const saveLocal=()=>store.set("cover-me",me);
+const track=n=>{ try{ if(window.coverTrack) window.coverTrack(n); }catch(e){} };
+const CREW_RX=/^[a-z0-9_]{2,24}$/;
+(function(){ try{ const c=(new URLSearchParams(location.search).get("crew")||"").toLowerCase().replace(/^@/,""); if(CREW_RX.test(c)&&me.crew!==c){ me.crew=c; saveLocal(); track("crew-join/"+c); } }catch(e){} })();
+if(me.crew&&!CREW_RX.test(me.crew)) delete me.crew;
+let lbView=me.crew?"crew":"all";
+const SITE_URL=(window.COVER_CONFIG&&window.COVER_CONFIG.siteUrl)||"";
+const shareLink=()=>SITE_URL?SITE_URL+(me.crew?"?crew="+encodeURIComponent(me.crew):""):"";
 async function push(){
   saveLocal(); if(!myRef) return;
   if(writing){ dirty=true; return; } writing=true;
@@ -573,7 +605,7 @@ function renderHandle(){
   if(!myRef||me.handle){ box.innerHTML=""; return; }
   box.innerHTML='<div class="card"><h2>Claim your spot</h2><p class="pending" style="font-size:15px">Pick a name for the leaderboard. Everyone sees it next to your Ball Knowledge Score.</p>'+
     '<form class="handle" id="hf"><label for="hn" hidden>Leaderboard name</label><input id="hn" maxlength="20" placeholder="e.g. CornhuskerCole" autocomplete="off"><button class="btn primary" type="submit">Save</button></form></div>';
-  $("hf").onsubmit=e=>{ e.preventDefault(); const v=$("hn").value.trim().replace(/\s+/g," ").slice(0,20); if(v.length<2) return; me.handle=v; push(); renderHandle(); renderLeaderboard(); };
+  $("hf").onsubmit=e=>{ e.preventDefault(); const v=$("hn").value.trim().replace(/\s+/g," ").slice(0,20); if(v.length<2) return; me.handle=v; push(); track("name-claimed"); renderHandle(); renderLeaderboard(); };
 }
 
 // ---- Daily Five ----
@@ -625,7 +657,7 @@ function answer(val,timeout){
   run.ans[run.i]={v:val,b,w:run.w,t:!!timeout};
   const tmp={...me,days:{...me.days,[TODAY]:run.ans.filter(Boolean).map(a=>({b:a.b,w:a.w,v:a.v}))}};
   lastDelta=rating(tmp).r-before;
-  if(run.ans.filter(Boolean).length===5){ me.days[TODAY]=run.ans.map(a=>({b:a.b,w:a.w,v:a.v})); push(); }
+  if(run.ans.filter(Boolean).length===5){ me.days[TODAY]=run.ans.map(a=>({b:a.b,w:a.w,v:a.v})); push(); track("daily-five-done"); }
   run.phase="reveal"; saveRun(); renderBoard(); renderDaily();
 }
 function crowdRight(i){
@@ -678,7 +710,8 @@ function share(){
   const d=me.days[TODAY]||run.ans, {r}=rating(me), bp=beatPct();
   const maxHit=d.find(x=>x&&x.w===5);
   const text="COVER · "+now.toLocaleDateString(undefined,{month:"short",day:"numeric"})+"\n"+d.map(x=>SQ[colorOf(x.b)]).join("")+"  "+fmtN(todayQuizPts())+" pts\n"+
-    (maxHit?(maxHit.b>=90?"🔒 +500 hit\n":"💀 +500 missed\n"):"")+(bp?"Beat "+bp.pct+"% of players\n":"")+"Ball Knowledge "+r+" · "+tierOf(r);
+    (maxHit?(maxHit.b>=90?"🔒 +500 hit\n":"💀 +500 missed\n"):"")+(bp?"Beat "+bp.pct+"% of players\n":"")+"Ball Knowledge "+r+" · "+tierOf(r)+(shareLink()?"\nCan you beat me? "+shareLink():"");
+  track("share");
   const b=$("share"); const ok=()=>{ b.textContent="Copied"; setTimeout(()=>{ b.textContent="Copy results"; },1500); };
   const fb=()=>{ $("cf").innerHTML='<textarea class="copybox" id="ct" rows="5" readonly></textarea>'; $("ct").value=text; $("ct").select(); };
   try{ navigator.clipboard.writeText(text).then(ok,fb); }catch(e){ fb(); }
@@ -733,7 +766,7 @@ function renderSlateFoot(){
   const any=games.some(x=>hasPick(me,x.id)&&!isLocked(x));
   box.innerHTML=(open?'<div class="btns"><button class="btn primary big" id="subBtn"'+(any?"":" disabled")+'>'+(sub===true?"Slip locked ✓":sub?"Update my slip":"Lock my slip")+'</button></div>':'')+
     '<p class="msg" style="margin-top:8px">'+(open?(sub===true?"Locked. You can still change picks until each kickoff.":"Lock your slip to see how the crowd called each game."):"All games are locked. Points post as finals come in.")+'</p>';
-  const b=$("subBtn"); if(b) b.onclick=()=>{ me.submitted[TODAY]=true; push(); renderSlateFoot(); renderCrowd(); };
+  const b=$("subBtn"); if(b) b.onclick=()=>{ me.submitted[TODAY]=true; push(); track("slip-locked"); renderSlateFoot(); renderCrowd(); };
 }
 function renderCrowd(){
   games.forEach(x=>{ const el=$("cr-"+x.id); if(!el) return;
@@ -812,14 +845,17 @@ function renderLeaderboard(){
   const box=$("lb");
   if(social==="off"){ box.innerHTML='<p class="pending">The leaderboard is offline right now. Your progress still saves on this device.</p>'; $("cRank").textContent="–"; return; }
   if(social!=="on"){ box.innerHTML='<p class="pending">'+(social==="slow"?"The leaderboard can't be reached yet. Your progress saves on this device.":"Loading…")+'</p>'; return; }
-  const rows=others.filter(o=>o.handle&&o.id!==uid).map(o=>{ const rt=rating(o); return {id:o.id,h:String(o.handle).slice(0,20),r:rt.r,n:rt.n}; });
+  const inView=o=>lbView!=="crew"||!me.crew||String(o.crew||"")===me.crew;
+  const rows=others.filter(o=>o.handle&&o.id!==uid&&inView(o)).map(o=>{ const rt=rating(o); return {id:o.id,h:String(o.handle).slice(0,20),r:rt.r,n:rt.n}; });
   const mr=rating(me); rows.push({id:uid,h:me.handle||"You",r:mr.r,n:mr.n});
   rows.sort((a,b)=>b.r-a.r||b.n-a.n); const mi=rows.findIndex(x=>x.id===uid);
-  $("cRank").textContent="#"+(mi+1)+(rows.length>1?" / "+rows.length:"");
+  if(lbView!=="crew"||!me.crew) $("cRank").textContent="#"+(mi+1)+(rows.length>1?" / "+rows.length:"");
   const top=rows.slice(0,25); if(mi>=25) top.push(rows[mi]);
-  box.innerHTML='<table class="lb"><thead><tr><th>#</th><th>Player</th><th>Tier</th><th class="r">BKS</th></tr></thead><tbody>'+
+  const seg=me.crew?'<div class="lbseg" role="group" aria-label="Leaderboard view"><button data-v="crew" aria-pressed="'+(lbView==="crew")+'">@'+esc(me.crew)+' crew</button><button data-v="all" aria-pressed="'+(lbView==="all")+'">Everyone</button></div>'+(lbView==="crew"?'<p class="crewnote">'+(rows.length>1?"Only players who joined through @"+esc(me.crew)+"'s link.":"You're the first one here from @"+esc(me.crew)+"'s link. Share it and get the crew in.")+'</p>':''):'';
+  box.innerHTML=seg+'<table class="lb"><thead><tr><th>#</th><th>Player</th><th>Tier</th><th class="r">BKS</th></tr></thead><tbody>'+
     top.map(x=>'<tr'+(x.id===uid?' class="me"':'')+'><td>'+(rows.indexOf(x)+1)+'</td><td></td><td class="t">'+tierOf(x.r)+(x.n<10?" · prov.":"")+'</td><td class="r">'+x.r+'</td></tr>').join("")+'</tbody></table>'+
-    (rows.length>1?'<p class="pending" style="margin-top:8px">You\'re in the top '+Math.max(1,Math.round(100*(mi+1)/rows.length))+'% of '+rows.length+' players.</p>':'');
+    (rows.length>1?'<p class="pending" style="margin-top:8px">You\'re #'+(mi+1)+' of '+rows.length+(lbView==="crew"&&me.crew?' in the crew.':' players.')+(rows.length>=10&&(mi+1)/rows.length<=.25?' Top '+Math.max(1,Math.round(100*(mi+1)/rows.length))+'%.':'')+'</p>':'');
+  box.querySelectorAll(".lbseg button").forEach(b=>b.onclick=()=>{ lbView=b.dataset.v; renderLeaderboard(); });
   [...box.querySelectorAll("tbody tr")].forEach((tr,i)=>{ tr.children[1].textContent=top[i].h+(top[i].id===uid?" (you)":""); });
 }
 function renderSocial(){ renderHandle(); renderLeaderboard(); renderBoard(); if(tab==="home") renderHome(); else if(tab==="slate") renderCrowd(); else if(run.phase==="done"||run.phase==="reveal"){ const y=window.scrollY; renderDaily(); if(window.scrollTo) window.scrollTo({top:y}); } }
