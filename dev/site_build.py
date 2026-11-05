@@ -1,6 +1,6 @@
 import os
 E=lambda k,d="": os.environ.get(k,d)
-SITE=E("SITE_URL","https://colekunz-code.github.io/Cover/")
+SITE=E("SITE_URL","https://dailyballknowledge.com/")
 t=open("cover2_tpl.html").read(); d=open("data_block.js").read(); q=open("questions2.js").read()
 body=t.replace("%%DATA%%",d).replace("%%QUESTIONS%%",q)
 body=body.replace("Sign in to Claude to join the leaderboard. Your progress still saves on this device.","The leaderboard is offline right now. Your progress still saves on this device.")

@@ -1,6 +1,6 @@
 # Cover: developer handoff
 
-Live site: https://colekunz-code.github.io/Cover/ (built from `index.html` at the repo root).
+Live site: https://dailyballknowledge.com/ (custom domain via Porkbun DNS; old https://colekunz-code.github.io/Cover/ redirects there; built from `index.html` at the repo root).
 Test artifact: https://claude.ai/artifact/BMBkKW9fsUzoRsLZNh7T4c. Admin (private): https://claude.ai/artifact/3fT56sw6RzC4gpHyd1DDAJ
 
 ## Source layout (this folder)
