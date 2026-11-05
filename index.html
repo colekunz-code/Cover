@@ -125,6 +125,20 @@ h1 span{color:var(--board-gold)}
 .pips{display:flex;gap:5px}
 .pip{width:22px;height:6px;border-radius:3px;background:var(--line)}
 .pip.g{background:var(--turf)} .pip.y{background:var(--amber)} .pip.r{background:var(--red)} .pip.now{background:var(--gold)}
+.pip.cv{width:14px;border-radius:50%;height:14px;margin-top:-4px;background:transparent;border:2px solid var(--gold)} .pip.cv.now{background:var(--gold)} .pip.cv.g{background:var(--turf);border-color:var(--turf)} .pip.cv.r{background:var(--red);border-color:var(--red)}
+.convcard{border-color:color-mix(in srgb, var(--gold) 55%, transparent);background:radial-gradient(ellipse 90% 60% at 50% 0%, rgba(245,184,46,.16), transparent 70%),linear-gradient(180deg,var(--slip),var(--slip2))}
+.td{display:grid;justify-items:center;gap:2px;text-align:center}
+.td .lbl{font:800 13px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.td b{font-family:var(--display);font-weight:900;font-size:clamp(64px,18vw,110px);line-height:.9;font-variant-numeric:tabular-nums}
+.convopts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.convbtn{appearance:none;cursor:pointer;display:grid;justify-items:center;gap:6px;text-align:center;padding:18px 10px;border-radius:16px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font-family:var(--body)}
+.convbtn .ic{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb, var(--blue) 18%, transparent);color:var(--blue)} .convbtn .ic svg{width:30px;height:30px}
+.convbtn b{font-family:var(--display);font-weight:900;font-size:clamp(24px,6.5vw,34px);text-transform:uppercase;line-height:1}
+.convbtn small{color:var(--muted);font-size:14px}
+.convbtn .odds{font:700 14px var(--mono);color:var(--muted);display:grid;gap:2px} .convbtn .odds .w{color:var(--turf)} .convbtn .odds .l{color:var(--red)}
+.convbtn.two{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 0 28px rgba(245,184,46,.18)} .convbtn.two .ic{background:color-mix(in srgb, var(--gold) 20%, transparent);color:var(--gold)}
+@media (hover:hover){.convbtn:hover{border-color:var(--ink)} .convbtn.two:hover{border-color:var(--gold)}}
+@media (max-width:380px){.convopts{grid-template-columns:1fr}}
 .cat{font-family:var(--display);font-weight:900;font-size:clamp(40px,12vw,64px);line-height:.9;text-transform:uppercase;text-align:center;margin:6px 0;letter-spacing:.01em}
 .catsub{text-align:center;color:var(--muted);margin:0}
 .wagers{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -338,7 +352,7 @@ textarea.copybox{width:100%;font:14px var(--mono);border-radius:8px;border:1px s
   <section id="handleBox"></section>
   <nav class="tabs" id="tabs" role="tablist">
     <button class="tab" role="tab" id="tabHome" aria-selected="true">Home</button>
-    <button class="tab" role="tab" id="tabDaily" aria-selected="false">Daily Five</button>
+    <button class="tab" role="tab" id="tabDaily" aria-selected="false">Daily Drive</button>
     <button class="tab" role="tab" id="tabSlate" aria-selected="false" hidden>Slate</button>
   </nav>
   <section id="home" style="display:grid;gap:16px"></section>
@@ -514,6 +528,40 @@ const QUESTIONS=[
  {"k": "scored", "q": "Week 4, Lions at Panthers (SNF). 2nd quarter, 32-yard TD catch from Bryce Young. Who caught it?", "o": ["Jalen Coker", "Chuba Hubbard", "Tetairoa McMillan", "Tommy Tremble"], "a": 2, "f": "Tetairoa McMillan, who added a 10-yard TD in the 3rd. Carolina won 32-26."}
 ];
 
+// ===== Conversion banks (6-round format starts FMT2_START) =====
+// After round 6 the player picks: PAT (easier, two options: hit = day +10%, miss = day -10%)
+// or Go for two (hard, four options: hit = day x2, miss = day goes to 0).
+// Conversion day N (counting from FMT2_START as 0) uses PAT_Q[N] / TWO_Q[N], wrapping. Append only.
+const FMT2_START="2026-11-06";
+const PAT_Q=[
+ {k:"ou",q:"Week 1, Broncos at Chiefs: did Kansas City score over or under 27.5 points?",o:["Over","Under"],a:0,f:"Over. The Chiefs won 31-10."},
+ {k:"duel",q:"Week 3, Cardinals at 49ers: who threw more TD passes?",o:["Jacoby Brissett","Brock Purdy"],a:1,f:"Purdy threw 4. Brissett threw 2."},
+ {k:"match",q:"Who won Super Bowl LIX in February 2025?",o:["Philadelphia Eagles","Kansas City Chiefs"],a:0,f:"The Eagles, 40-22 over the Chiefs."},
+ {k:"scored",q:"Week 7 on TNF, Patriots at Bears: who won?",o:["Patriots","Bears"],a:1,f:"Chicago, 30-24."},
+ {k:"fact",q:"Week 5 vs the 49ers: did Seahawks K Jason Myers miss a field goal?",o:["Yes","No"],a:1,f:"No. He went 5 for 5, and Seattle still lost 32-29."},
+ {k:"long",q:"Week 2 on SNF, Colts at Chiefs: did the game go to overtime?",o:["Yes","No"],a:0,f:"Yes. Kansas City won 33-30 in OT."},
+ {k:"match",q:"How many Super Bowls did Tom Brady win?",o:["6","7"],a:1,f:"Seven: six with the Patriots and one with the Bucs."},
+ {k:"duel",q:"Which franchise has more Super Bowl titles?",o:["Pittsburgh Steelers","Dallas Cowboys"],a:0,f:"Steelers 6, Cowboys 5."},
+ {k:"scored",q:"Week 4 on SNF, Lions at Panthers: who won?",o:["Lions","Panthers"],a:1,f:"Carolina, 32-26."},
+ {k:"ou",q:"Week 8 vs Tennessee: did Joe Burrow throw for 400+ yards?",o:["Yes","No"],a:0,f:"Yes. 462 yards and 5 TDs (with 3 picks)."},
+ {k:"scored",q:"Week 8, Cardinals at Cowboys: who won?",o:["Cardinals","Cowboys"],a:0,f:"Arizona, 33-30."},
+ {k:"ou",q:"Week 1, Bears at Panthers: did Chicago score more than 50 points?",o:["Yes","No"],a:0,f:"Yes, 59. The Bears won 59-37."}
+];
+const TWO_Q=[
+ {k:"closest",q:"Week 1 vs Denver: how many rushing yards did Kenneth Walker III have?",o:["131","148","173","196"],a:2,f:"173 on 23 carries, with a 60-yard TD."},
+ {k:"defense",q:"Week 7 at Chicago: how many tackles did Patriots LB Christian Elliss make?",o:["13","9","11","15"],a:0,f:"13, the most in the game."},
+ {k:"duel",q:"Week 8 vs Tennessee: how many passes did Joe Burrow complete?",o:["31","34","38","41"],a:2,f:"38 of 48 for 462 yards."},
+ {k:"ou",q:"Week 2, Lions at Bills: how many total points were scored?",o:["61","72","65","68"],a:1,f:"72. Buffalo won 41-31."},
+ {k:"defense",q:"Week 1 vs Tampa Bay: how many Bucs fumbles did the Bengals recover?",o:["1","2","3","4"],a:3,f:"Four, including one returned for a TD."},
+ {k:"defense",q:"Week 5 at Seattle: how many sacks did the 49ers' defense record?",o:["5","2","3","4"],a:0,f:"Five sacks, plus two interceptions."},
+ {k:"duel",q:"Week 3 vs Arizona: how many passes did Brock Purdy complete?",o:["12","15","19","22"],a:1,f:"Just 15 of 27, but for 297 yards and 4 TDs."},
+ {k:"long",q:"Week 4 at Carolina: how many passing yards did the Lions have?",o:["341","368","389","412"],a:3,f:"412, and they still lost 32-26."},
+ {k:"duel",q:"Week 7 at Chicago: how many passing yards did Drake Maye have?",o:["321","276","289","304"],a:0,f:"321 on 24 of 31."},
+ {k:"scored",q:"Week 1 at Carolina: how many rushing TDs did D'Andre Swift score?",o:["1","2","3","4"],a:2,f:"Three: from 1, 1 and 28 yards out."},
+ {k:"scored",q:"Week 5 at Arizona: how many total touchdowns did Detroit score?",o:["4","5","6","7"],a:2,f:"Six (3 rushing, 3 passing) in a 45-21 win."},
+ {k:"closest",q:"Week 8 vs Las Vegas: how many rushing yards did Braelon Allen have?",o:["109","121","133","147"],a:3,f:"147 on 21 carries."}
+];
+
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const $=id=>document.getElementById(id);
@@ -548,14 +596,14 @@ const ICP={duel:'<path d="M6 20V11M12 20V4M18 20v-6"/><path d="M3 20h18"/>',
  fact:'<circle cx="11" cy="11" r="6.5"/><path d="M20.5 20.5l-4.8-4.8"/>',detective:'<circle cx="11" cy="11" r="6.5"/><path d="M20.5 20.5l-4.8-4.8"/>'};
 const catIcon=k=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICP[k]||ICP.duel)+'</svg>';
 function catRecord(k){ let hit=0,tot=0; for(const [d,rounds] of Object.entries(me.days||{})){ if(!Array.isArray(rounds)||d===TODAY) continue; const dn=dayNum(d); if(!(dn>=0)) continue;
-  rounds.forEach((x,i)=>{ const q=QUESTIONS[(dn*5+i)%QUESTIONS.length]; if(x&&q&&q.k===k){ tot++; if(+x.b>=90) hit++; } }); } return {hit,tot}; }
+  const qs=dayQs(d); rounds.forEach((x,i)=>{ const q=qs[i]; if(x&&!x.c&&q&&q.k===k){ tot++; if(+x.b>=90) hit++; } }); } return {hit,tot}; }
 function renderTicker(){ const el=$("tick"); if(!el) return; const it=[];
   SLATE.filter(g=>!RESULTS[g[0]]&&new Date(g[1]).getTime()>Date.now()-3.5*3600e3).sort((a,b)=>a[1]<b[1]?-1:1).slice(0,10).forEach(g=>{ const o=oddsOf(g[0]); const d=new Date(g[1]);
     it.push('<span><b>'+esc(g[2])+' @ '+esc(g[3])+'</b> '+(o?'<span class="g">'+esc(o[2])+'</span> · O/U '+esc(o[3]):'')+' · '+esc(keyOf(d)===TODAY?"Tonight":d.toLocaleDateString(undefined,{weekday:"short"}))+' '+esc(fmtTime(d))+'</span>'); });
   SLATE.filter(g=>RESULTS[g[0]]).slice(-6).forEach(g=>{ const f=RESULTS[g[0]]; it.push('<span><span class="x">FINAL</span> <b>'+esc(g[2])+' '+f[0]+'</b> · <b>'+esc(g[3])+' '+f[1]+'</b></span>'); });
   PAST.slice(-8).reverse().forEach(g=>{ it.push('<span><span class="x">FINAL</span> '+esc(g[1])+' '+g[3]+' · '+esc(g[2])+' '+g[4]+'</span>'); });
   if(social==="on"){ const top=others.filter(o=>o.handle).map(o=>({h:String(o.handle).slice(0,20),r:rating(o).r})).sort((a,b)=>b.r-a.r)[0]; if(top) it.unshift('<span><span class="w">#1</span> <b>'+esc(top.h)+'</b> · '+top.r+' BKS</span>'); }
-  it.unshift('<span><span class="g">COVER</span> · Today\'s five is live</span>');
+  it.unshift('<span><span class="g">COVER</span> · Today\'s drive is live</span>');
   const html=it.join(""); el.innerHTML=html+html; el.style.setProperty("--tick-dur",Math.max(30,it.length*5)+"s"); }
 const CATS={long:"Longest Play",defense:"Defense",cap:"Spot the Cap",duel:"Stat Duel",scored:"Who Scored?",ou:"Over / Under",closest:"Closest Wins",detective:"Box Score Detective",match:"Match the Fact",fact:"Fact or Cap"};
 const CATSUB={long:"One player, one game. How long was his biggest play?",defense:"Real defensive box scores. Tackles, sacks, picks.",cap:"Three statements. Two are real. Find the fake.",duel:"Two real stat lines. One number. Pick the bigger one.",scored:"A real touchdown from this season. Name the guy.",ou:"A real stat line. Over or under?",closest:"Type a number. The closer you are, the more you get.",detective:"A real box score. Which game was it?",match:"A real player fact. Match it to the player.",fact:"True or made up? Call it."};
@@ -565,7 +613,18 @@ const ROAST_R=["Ball knower.","That's film-room stuff.","Somebody reads box scor
 
 // ---- Today's questions (same for everyone) ----
 const DN=Math.max(0,dayNum(TODAY));
-const TODAY_Q=[0,1,2,3,4].map(i=>QUESTIONS[(DN*5+i)%QUESTIONS.length]);
+function dayFmt(dk){ const n=Math.max(0,dayNum(dk)), c=(typeof FMT2_START!=="undefined")?dayNum(FMT2_START):1e9;
+  if(n<c) return {rounds:5,base:n*5,conv:false,ci:-1}; return {rounds:6,base:c*5+(n-c)*6,conv:true,ci:n-c}; }
+const dayQs=dk=>{ const f=dayFmt(dk); return Array.from({length:f.rounds},(_,i)=>QUESTIONS[(f.base+i)%QUESTIONS.length]); };
+const TF=dayFmt(TODAY), NR=TF.rounds, TOTAL_R=NR+(TF.conv?1:0);
+const DAILY_W=NR===6?[1,2,3,4,5,6]:[1,2,3,4,5], TOPW=DAILY_W[DAILY_W.length-1];
+const TODAY_Q=dayQs(TODAY);
+const convQ=c=>{ const bank=c==="two"?TWO_Q:PAT_Q; return bank[((TF.ci%bank.length)+bank.length)%bank.length]; };
+const curQ=()=>run.i<NR?TODAY_Q[run.i]:convQ(run.c);
+const dayDone=(arr,dk)=>{ if(!Array.isArray(arr)) return false; const f=dayFmt(dk); return arr.filter(Boolean).length>=f.rounds+(f.conv?1:0); };
+function dayScore(arr){ if(!Array.isArray(arr)) return 0; const xs=arr.filter(Boolean); const main=xs.filter(x=>!x.c).reduce((a,x)=>a+(+x.b||0)*(+x.w||1),0); const cv=xs.find(x=>x.c);
+  if(!cv) return main; const hit=+cv.b>=90; return cv.c==="two"?(hit?main*2:0):Math.round(main*(hit?1.1:0.9)); }
+const convMeta={pat:{name:"Extra Point",short:"PAT",win:"+10%",lose:"−10%"},two:{name:"Two-Point Try",short:"2PT",win:"×2",lose:"→ 0"}};
 
 // ---- Live slate ----
 const SLATE_BY_ID=Object.fromEntries(SLATE.map(g=>[g[0],g]));
@@ -607,7 +666,7 @@ const TIERS=[[850,"Hall of Fame"],[700,"All-Pro"],[550,"Pro Bowl"],[400,"Starter
 const tierOf=r=>TIERS.find(t=>r>=t[0])[1];
 function events(slip){
   const ev=[];
-  for(const [d,rounds] of Object.entries(slip.days||{})) if(Array.isArray(rounds)) rounds.forEach((x,i)=>{ if(x&&isFinite(+x.b)) ev.push({t:d+"T1"+i,perf:Math.min(1,(+x.b)/100),w:Math.min(5,Math.max(1,+x.w||1)),kind:"q"}); });
+  for(const [d,rounds] of Object.entries(slip.days||{})) if(Array.isArray(rounds)) rounds.forEach((x,i)=>{ if(x&&isFinite(+x.b)) ev.push({t:d+"T1"+i,perf:Math.min(1,(+x.b)/100),w:Math.min(6,Math.max(1,+x.w||1)),kind:"q"}); });
   for(const gid of new Set([...Object.keys(slip.picks||{}),...Object.keys(slip.lines||{})])){
     const g=SLATE_BY_ID[gid], fin=RESULTS[gid];
     if(!g||!fin||!hasPick(slip,gid)) continue;
@@ -620,7 +679,7 @@ function rating(slip){
   for(const e of ev){ const exp=e.kind==="q"?0.25+0.5*(r/1000):0.2+0.4*(r/1000); r=Math.max(100,Math.min(999,r+6*e.w*(e.perf-exp))); }
   return {r:Math.round(r),n:ev.length};
 }
-function streakOf(slip){ const d=new Date(now); let s=0; const has=k=>Array.isArray((slip.days||{})[k])&&slip.days[k].length===5;
+function streakOf(slip){ const d=new Date(now); let s=0; const has=k=>dayDone((slip.days||{})[k],k);
   if(!has(keyOf(d))) d.setDate(d.getDate()-1);
   while(has(keyOf(d))){ s++; d.setDate(d.getDate()-1); } return s; }
 
@@ -664,16 +723,16 @@ async function push(){
 })();
 
 // ---- Board ----
-function todayQuizPts(){ const d=me.days[TODAY]; return Array.isArray(d)?d.reduce((a,x)=>a+(+x.b||0)*(+x.w||1),0):run.ans.reduce((a,x)=>a+(x?(+x.b||0)*(+x.w||1):0),0); }
+function todayQuizPts(){ const d=me.days[TODAY]; return dayScore(Array.isArray(d)?d:run.ans); }
 function todaySlatePts(){ return games.reduce((a,x)=>{ if(!x.fin||!hasPick(me,x.id)) return a; return a+gamePts(SLATE_BY_ID[x.id],x.fin,me).sum*(+me.wagers[x.id]||1); },0); }
-function liveMe(){ if(Array.isArray(me.days[TODAY])) return me; const part=run.ans.filter(Boolean).map(a=>({b:a.b,w:a.w})); return part.length?{...me,days:{...me.days,[TODAY]:part}}:me; }
+function liveMe(){ if(Array.isArray(me.days[TODAY])) return me; const part=run.ans.filter(Boolean).map(a=>({b:a.b,w:a.w,c:a.c})); return part.length?{...me,days:{...me.days,[TODAY]:part}}:me; }
 function renderBoard(){
   const {r,n}=rating(liveMe());
   $("bksNum").innerHTML=r+(lastDelta?'<span class="delta '+(lastDelta>0?"up":"down")+'">'+(lastDelta>0?"+":"")+lastDelta+'</span>':"");
   $("bksTier").textContent=tierOf(r);
   $("bksMeter").style.width=((r-100)/899*100).toFixed(1)+"%";
   const nxt=[...TIERS].reverse().find(t=>t[0]>r);
-  $("bksSub").textContent=n===0?"Play today's five to start your rating.":(n<10?"Provisional · ":"")+n+(n===1?" play":" plays")+" graded"+(nxt?" · "+(nxt[0]-r)+" to "+nxt[1]:"");
+  $("bksSub").textContent=n===0?"Play today's drive to start your rating.":(n<10?"Provisional · ":"")+n+(n===1?" play":" plays")+" graded"+(nxt?" · "+(nxt[0]-r)+" to "+nxt[1]:"");
   $("mode").textContent=LIVE?"Game day":"Daily"; $("mode").className="mode"+(LIVE?" live":"");
   $("cPts").textContent=fmtN(todayQuizPts()+todaySlatePts());
   const s=streakOf(me); $("cStreak").textContent=s+(s>=3?" 🔥":"");
@@ -689,41 +748,44 @@ function renderHandle(){
 }
 
 // ---- Daily Five ----
-function pipsHTML(){ return '<div class="pips">'+TODAY_Q.map((q,i)=>{ const a=run.ans[i]; return '<span class="pip '+(a?colorOf(a.b):(i===run.i&&run.phase!=="intro"&&run.phase!=="done"?"now":""))+'"></span>'; }).join("")+'</div>'; }
+function pipsHTML(){ const live=i=>i===run.i&&run.phase!=="intro"&&run.phase!=="done";
+  return '<div class="pips">'+TODAY_Q.map((q,i)=>{ const a=run.ans[i]; return '<span class="pip '+(a?colorOf(a.b):(live(i)?"now":""))+'"></span>'; }).join("")+
+  (TF.conv?(()=>{ const a=run.ans[NR]; return '<span class="pip cv '+(a?(a.b>=90?"g":"r"):(live(NR)||run.phase==="conv"?"now":""))+'" title="Conversion"></span>'; })():'')+'</div>'; }
 const usedW=()=>run.ans.filter(Boolean).map(a=>a.w);
-const leftW=()=>WAGERS.filter(w=>!usedW().includes(w));
+const leftW=()=>DAILY_W.filter(w=>!run.ans.slice(0,NR).filter(Boolean).map(a=>a.w).includes(w));
 function renderDaily(){
   clearInterval(timer);
   const box=$("daily");
-  if(Array.isArray(me.days[TODAY])&&me.days[TODAY].length===5&&run.phase!=="reveal") run.phase="done";
-  ({intro:dIntro,category:dCategory,question:dQuestion,reveal:dReveal,done:dDone})[run.phase]?.(box);
+  if(dayDone(me.days[TODAY],TODAY)&&run.phase!=="reveal") run.phase="done";
+  ({intro:dIntro,category:dCategory,question:dQuestion,reveal:dReveal,conv:dConv,done:dDone})[run.phase]?.(box);
 }
 function dIntro(box){
-  box.innerHTML='<div class="card"><div class="eyebrow"><span>Daily Five · '+esc(fmtDay(now))+'</span>'+pipsHTML()+'</div>'+
+  box.innerHTML='<div class="card"><div class="eyebrow"><span>Daily Drive · '+esc(fmtDay(now))+'</span>'+pipsHTML()+'</div>'+
     '<h2>Prove your ball knowledge</h2>'+
-    '<ol class="rules"><li>Five rounds of real NFL questions. 30 seconds each.</li>'+
-    '<li>Before each question you see its category, then place a wager: <b>+100</b> to <b>+500</b>.</li>'+
-    '<li>You get one of each wager per day, so save <b>+500</b> for the category you own.</li>'+
-    '<li>Right answers pay your wager. Wrong ones cost you Ball Knowledge, and big wagers cost more.</li></ol>'+
-    '<button class="btn primary big" id="go">Start today\'s five</button></div>';
+    '<ol class="rules"><li>'+(NR===6?'Six':'Five')+' rounds of real NFL questions. 30 seconds each.</li>'+
+    '<li>Before each question you see its category, then place a wager: <b>+100</b> to <b>+'+TOPW*100+'</b>.</li>'+
+    '<li>You get one of each wager per day, so save <b>+'+TOPW*100+'</b> for the category you own.</li>'+
+    '<li>Right answers pay your wager. Wrong ones cost you Ball Knowledge, and big wagers cost more.</li>'+
+    (TF.conv?'<li><b>Then the conversion.</b> Kick the <b>PAT</b> (easier: +10% or −10% on your day) or <b>go for two</b> (hard: double your whole day or lose it all).</li>':'')+'</ol>'+
+    '<button class="btn primary big" id="go">Kick off today\'s drive</button></div>';
   $("go").onclick=()=>{ run.phase="category"; run.i=0; saveRun(); renderDaily(); };
 }
 function dCategory(box){
   const q=TODAY_Q[run.i], left=leftW();
-  box.innerHTML='<div class="card"><div class="eyebrow"><span>Round '+(run.i+1)+' of 5</span>'+pipsHTML()+'</div>'+
+  box.innerHTML='<div class="card"><div class="eyebrow"><span>Round '+(run.i+1)+' of '+NR+'</span>'+pipsHTML()+'</div>'+
     (function(){ const rc=catRecord(q.k); return '<div class="topic pop" style="--c:'+(CATCOLOR[q.k]||"#4C8DFF")+'"><div class="ic">'+catIcon(q.k)+'</div><div class="cat">'+esc(CATS[q.k])+'</div><p class="catsub">'+esc(CATSUB[q.k])+'</p>'+
       '<p class="rec">'+(rc.tot?'Your record: '+rc.hit+' for '+rc.tot+(rc.tot>=3?' · '+Math.round(100*rc.hit/rc.tot)+'%':''):'First time seeing this one')+'</p></div>'; })()+
     '<div class="eyebrow"><span>Place your wager</span><span>'+(left.length===1?"Last one":left.length+" left")+'</span></div>'+
-    '<div class="wagers">'+WAGERS.map(w=>'<button class="wager'+(w===5?" max":"")+'" data-w="'+w+'"'+(left.includes(w)?"":" disabled")+' aria-label="Wager plus '+w*100+'">+'+w*100+'</button>').join("")+'</div>'+
+    '<div class="wagers" style="grid-template-columns:repeat('+DAILY_W.length+',1fr)">'+DAILY_W.map(w=>'<button class="wager'+(w===TOPW?" max":"")+'" data-w="'+w+'"'+(left.includes(w)?"":" disabled")+' aria-label="Wager plus '+w*100+'">+'+w*100+'</button>').join("")+'</div>'+
     '<p class="msg">The clock starts when you pick.</p></div>';
   box.querySelectorAll(".wager").forEach(b=>b.onclick=()=>{ if(b.disabled) return; run.w=+b.dataset.w; run.phase="question"; run.deadline=Date.now()+SECONDS*1000; saveRun(); renderDaily(); });
 }
 function dQuestion(box){
-  const q=TODAY_Q[run.i];
+  const q=curQ(), cv=run.i>=NR?convMeta[run.c]:null;
   let body;
   if(q.ans!=null) body='<form class="numrow" id="nf"><label for="nv" hidden>Your answer</label><input id="nv" size="1" type="text" inputmode="decimal" autocomplete="off" placeholder="'+esc(q.unit)+'"><button class="btn primary" type="submit">Lock</button></form>';
   else body='<div class="opts'+(q.o.length===2?" two":"")+'">'+q.o.map((o,i)=>'<button class="opt" data-i="'+i+'">'+esc(o)+'</button>').join("")+'</div>';
-  box.innerHTML='<div class="card"><div class="qhead" style="--c:'+(CATCOLOR[q.k]||"#4C8DFF")+'"><span class="ic">'+catIcon(q.k)+'</span><span class="nm">'+esc(CATS[q.k])+'</span><span class="wtag'+(run.w===5?" max":"")+'">+'+run.w*100+'</span><span class="tleft" id="tl"></span></div>'+
+  box.innerHTML='<div class="card'+(cv?' convcard':'')+'"><div class="qhead" style="--c:'+(cv?"var(--gold)":(CATCOLOR[q.k]||"#4C8DFF"))+'"><span class="ic">'+(cv?CONV_IC[run.c]:catIcon(q.k))+'</span><span class="nm">'+esc(cv?cv.name:CATS[q.k])+'</span><span class="wtag max">'+(cv?cv.win:'+'+run.w*100)+'</span><span class="tleft" id="tl"></span></div>'+
     '<div class="timer" aria-hidden="true"><i id="tb"></i></div><p class="q">'+esc(q.q)+'</p>'+body+'</div>';
   if(q.ans!=null){ const inp=$("nv"); inp.focus(); $("nf").onsubmit=e=>{ e.preventDefault(); const v=inp.value.replace(/[^\d.]/g,""); if(v!=="") answer(+v); }; }
   else box.querySelectorAll(".opt").forEach(b=>b.onclick=()=>answer(+b.dataset.i));
@@ -734,64 +796,95 @@ function dQuestion(box){
 }
 function answer(val,timeout){
   clearInterval(timer);
-  const q=TODAY_Q[run.i], b=gradeQ(q,val), before=rating(me).r;
-  run.ans[run.i]={v:val,b,w:run.w,t:!!timeout};
-  const tmp={...me,days:{...me.days,[TODAY]:run.ans.filter(Boolean).map(a=>({b:a.b,w:a.w,v:a.v}))}};
+  const q=curQ(), b=gradeQ(q,val), before=rating(me).r, isCv=run.i>=NR;
+  run.ans[run.i]=isCv?{v:val,b:b>=90?100:0,w:run.c==="two"?4:1,c:run.c,t:!!timeout}:{v:val,b,w:run.w,t:!!timeout};
+  const pack=()=>run.ans.filter(Boolean).map(a=>a.c?{b:a.b,w:a.w,v:a.v,c:a.c}:{b:a.b,w:a.w,v:a.v});
+  const tmp={...me,days:{...me.days,[TODAY]:pack()}};
   lastDelta=rating(tmp).r-before;
-  if(run.ans.filter(Boolean).length===5){ me.days[TODAY]=run.ans.map(a=>({b:a.b,w:a.w,v:a.v})); push(); track("daily-five-done"); }
+  if(run.ans.filter(Boolean).length>=TOTAL_R){ me.days[TODAY]=pack(); push(); track(isCv?"conversion-"+run.c+(run.ans[NR].b>=90?"-good":"-no-good"):"daily-five-done"); if(isCv) track("daily-drive-done"); }
   run.phase="reveal"; saveRun(); renderBoard(); renderDaily();
 }
 function crowdRight(i){
-  if(social!=="on") return null;
+  if(social!=="on"||i>=NR) return null;
   const xs=others.filter(o=>o.id!==uid).map(o=>((o.days||{})[TODAY]||[])[i]).filter(x=>x&&isFinite(+x.b));
   if(!xs.length) return null;
   return {pct:Math.round(100*xs.filter(x=>+x.b>=90).length/xs.length),n:xs.length};
 }
 function dReveal(box){
-  const q=TODAY_Q[run.i], a=run.ans[run.i], c=colorOf(a.b), last=run.i===4;
+  if(run.i>=NR) return dConvReveal(box);
+  const q=TODAY_Q[run.i], a=run.ans[run.i], c=colorOf(a.b), last=run.i===NR-1;
   const verdict=a.t&&a.v==null?"Time!":c==="g"?(q.ans!=null&&a.b<100?"So close":"Correct"):c==="y"?"Close":"Wrong";
   const roast=c==="g"?ROAST_R[hash(TODAY+run.i)%ROAST_R.length]:c==="r"?ROAST_W[hash(TODAY+run.i)%ROAST_W.length]:"Partial credit. The closer, the better.";
   let ansHTML;
   if(q.ans!=null) ansHTML='<p class="msg">You said <b>'+(a.v==null?"nothing":esc(a.v))+'</b>. Answer: <b>'+esc(q.ans)+' '+esc(q.unit)+'</b></p>';
   else ansHTML='<div class="opts'+(q.o.length===2?" two":"")+'">'+q.o.map((o,i)=>'<button class="opt'+(i===q.a?" right":(i===a.v?" wrong":""))+'" disabled>'+esc(o)+'</button>').join("")+'</div>';
   const cr=crowdRight(run.i);
-  box.innerHTML='<div class="card"><div class="eyebrow"><span>Round '+(run.i+1)+' of 5 · '+esc(CATS[q.k])+'</span>'+pipsHTML()+'</div>'+
+  box.innerHTML='<div class="card"><div class="eyebrow"><span>Round '+(run.i+1)+' of '+NR+' · '+esc(CATS[q.k])+'</span>'+pipsHTML()+'</div>'+
     '<p class="verdict '+c+' '+(c==="r"?"shake":"pop")+'">'+verdict+'</p><p class="roast">'+esc(roast)+'</p>'+
-    '<div class="payout"><span class="wtag'+(a.w===5?" max":"")+'">+'+a.w*100+'</span><span>×</span><span>'+a.b+'%</span><span>=</span><b>'+fmtN(a.b*a.w)+'</b><span>pts</span></div>'+
+    '<div class="payout"><span class="wtag'+(a.w===TOPW?" max":"")+'">+'+a.w*100+'</span><span>×</span><span>'+a.b+'%</span><span>=</span><b>'+fmtN(a.b*a.w)+'</b><span>pts</span></div>'+
     ansHTML+'<p class="fact">'+esc(q.f)+'</p>'+
     (cr?'<p class="crowdline">'+cr.pct+'% of '+cr.n+' players got this right.</p>':'')+
-    '<button class="btn primary big" id="nx">'+(last?"See your day":"Next round")+'</button></div>';
-  $("nx").onclick=()=>{ lastDelta=null; if(last){ run.phase="done"; } else { run.i++; run.phase="category"; } saveRun(); renderBoard(); renderDaily(); };
+    '<button class="btn primary big" id="nx">'+(last?(TF.conv?"Touchdown. Line up for the conversion →":"See your day"):"Next round")+'</button></div>';
+  $("nx").onclick=()=>{ lastDelta=null; if(last){ run.phase=TF.conv?"conv":"done"; if(TF.conv) run.i=NR; } else { run.i++; run.phase="category"; } saveRun(); renderBoard(); renderDaily(); };
   $("nx").focus();
+}
+const CONV_IC={pat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 3v9h12V3M12 12v9"/><circle cx="12" cy="7" r="1.6" fill="currentColor"/></svg>',
+ two:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8a5 5 0 0110 0c0 3-3 5-6 8H17"/><path d="M5 20h14"/></svg>'};
+function dConv(box){
+  const main=dayScore(run.ans.slice(0,NR)), pu=Math.round(main*1.1), pd=Math.round(main*0.9);
+  box.innerHTML='<div class="card convcard"><div class="eyebrow"><span>The conversion</span>'+pipsHTML()+'</div>'+
+    '<div class="td pop"><span class="lbl">Touchdown</span><b>'+fmtN(main)+'</b><span class="lbl">points on the board</span></div>'+
+    '<p class="msg" style="color:var(--ink)">Kick it or go for it? You won\'t see the question until you choose.</p>'+
+    '<div class="convopts">'+
+      '<button class="convbtn" id="cvPat"><span class="ic">'+CONV_IC.pat+'</span><b>Kick the PAT</b><small>Easier question</small><span class="odds"><span>Good <span class="w">'+fmtN(pu)+'</span></span><span>Miss <span class="l">'+fmtN(pd)+'</span></span></span></button>'+
+      '<button class="convbtn two" id="cvTwo"><span class="ic">'+CONV_IC.two+'</span><b>Go for two</b><small>Hard question · double or nothing</small><span class="odds"><span>Good <span class="w">'+fmtN(main*2)+'</span></span><span>Stopped <span class="l">0</span></span></span></button>'+
+    '</div><p class="msg">30 seconds, same as every round.</p></div>';
+  const go=c=>{ run.c=c; run.i=NR; run.phase="question"; run.deadline=Date.now()+SECONDS*1000; saveRun(); track("conversion-pick-"+c); renderDaily(); };
+  $("cvPat").onclick=()=>go("pat"); $("cvTwo").onclick=()=>go("two");
+}
+function dConvReveal(box){
+  const a=run.ans[NR], q=convQ(a.c), m=convMeta[a.c], good=a.b>=90, main=dayScore(run.ans.slice(0,NR)), fin=dayScore(run.ans);
+  const verdict=a.c==="two"?(good?"Two is good!":(a.t&&a.v==null?"Delay of game":"Stopped short")):(good?"It's good!":(a.t&&a.v==null?"Delay of game":"Doinked it"));
+  const line=a.c==="two"?(good?"Double or nothing… and you doubled it.":"Lost the whole day on one snap. Legendary or tragic, you decide."):(good?"Automatic. Take the points.":"Wide right. Small fine, big embarrassment.");
+  box.innerHTML='<div class="card convcard"><div class="eyebrow"><span>'+esc(m.name)+'</span>'+pipsHTML()+'</div>'+
+    '<p class="verdict '+(good?"g pop":"r shake")+'">'+verdict+'</p><p class="roast">'+esc(line)+'</p>'+
+    '<div class="payout"><span>'+fmtN(main)+'</span><span>'+(good?m.win:m.lose)+'</span><span>=</span><b>'+fmtN(fin)+'</b><span>pts</span></div>'+
+    '<div class="opts'+(q.o.length===2?" two":"")+'">'+q.o.map((o,i)=>'<button class="opt'+(i===q.a?" right":(i===a.v?" wrong":""))+'" disabled>'+esc(o)+'</button>').join("")+'</div>'+
+    '<p class="fact">'+esc(q.f)+'</p><button class="btn primary big" id="nx">See your day</button></div>';
+  $("nx").onclick=()=>{ lastDelta=null; run.phase="done"; saveRun(); renderBoard(); renderDaily(); }; $("nx").focus();
 }
 function beatPct(){
   if(social!=="on") return null; const mine=todayQuizPts();
-  const xs=others.filter(o=>o.id!==uid).map(o=>(o.days||{})[TODAY]).filter(d=>Array.isArray(d)&&d.length===5).map(d=>d.reduce((a,x)=>a+(+x.b||0)*(+x.w||1),0));
+  const xs=others.filter(o=>o.id!==uid).map(o=>(o.days||{})[TODAY]).filter(d=>dayDone(d,TODAY)).map(dayScore);
   if(!xs.length) return null; return {pct:Math.round(100*xs.filter(v=>v<mine).length/xs.length),n:xs.length};
 }
 function dDone(box){
   const d=me.days[TODAY]||run.ans; const pts=todayQuizPts(), {r}=rating(me), bp=beatPct();
-  const sq=d.map(x=>SQ[colorOf(x.b)]).join("");
-  const maxHit=d.find(x=>x.w===5);
-  box.innerHTML='<div class="card summary"><div class="eyebrow" style="width:100%"><span>Daily Five · '+esc(fmtDay(now))+'</span><span>Final</span></div>'+
-    '<div class="total">'+fmtN(pts)+'<small> / 1,500</small></div><div class="squares" aria-label="Round results">'+sq+'</div>'+
-    (maxHit?'<p class="beat">'+(maxHit.b>=90?"Your +500 hit. 🔒":"Your +500 missed. Brutal.")+'</p>':'')+
+  const mainR=d.filter(x=>x&&!x.c), cv=d.find(x=>x&&x.c);
+  const sq=mainR.map(x=>SQ[colorOf(x.b)]).join("")+(cv?" "+(cv.c==="two"?"2️⃣":"🦶")+(cv.b>=90?"✅":"❌"):"");
+  const maxHit=mainR.find(x=>x.w===TOPW);
+  box.innerHTML='<div class="card summary"><div class="eyebrow" style="width:100%"><span>Daily Drive · '+esc(fmtDay(now))+'</span><span>Final</span></div>'+
+    '<div class="total">'+fmtN(pts)+'<small> pts</small></div><div class="squares" aria-label="Round results">'+sq+'</div>'+
+    (cv?'<p class="beat">'+(cv.c==="two"?(cv.b>=90?"Went for two. Doubled the day. 🔥":"Went for two. Lost it all. 💀"):(cv.b>=90?"Kicked the PAT. +10%.":"Missed the PAT. −10%."))+'</p>':'')+
+    (maxHit?'<p class="beat">'+(maxHit.b>=90?"Your +"+TOPW*100+" hit. 🔒":"Your +"+TOPW*100+" missed. Brutal.")+'</p>':'')+
     (bp?'<p class="beat">You beat '+bp.pct+'% of today\'s '+bp.n+' other players.</p>':'')+
     '<p class="pending" style="font-size:15px;margin:0">Ball Knowledge Score <b>'+r+'</b> · '+tierOf(r)+'</p>'+
-    '<div class="recap">'+TODAY_Q.map((q,i)=>{ const x=d[i]||{b:0,w:1}; return '<div class="r"><span>'+SQ[colorOf(x.b)]+'</span><span>'+esc(CATS[q.k])+' <span class="wtag'+(x.w===5?" max":"")+'">+'+x.w*100+'</span></span><b>'+fmtN(x.b*x.w)+'</b></div>'; }).join("")+'</div>'+
+    '<div class="recap">'+TODAY_Q.map((q,i)=>{ const x=d[i]||{b:0,w:1}; return '<div class="r"><span>'+SQ[colorOf(x.b)]+'</span><span>'+esc(CATS[q.k])+' <span class="wtag'+(x.w===TOPW?" max":"")+'">+'+x.w*100+'</span></span><b>'+fmtN(x.b*x.w)+'</b></div>'; }).join("")+
+      (cv?'<div class="r"><span>'+(cv.b>=90?"✅":"❌")+'</span><span>'+esc(convMeta[cv.c].name)+' <span class="wtag max">'+(cv.b>=90?convMeta[cv.c].win:convMeta[cv.c].lose)+'</span></span><b>'+fmtN(pts)+'</b></div>':'')+'</div>'+
     '<div class="btns" style="width:100%"><button class="btn gold big" id="share">Copy results</button></div><div id="cf" style="width:100%"></div>'+
     (LIVE?'<button class="btn primary big" id="toSlate">Now make tonight\'s picks →</button>':'')+
     '<button class="btn big" id="backHome">Back to home</button><p class="next" id="nextIn"></p></div>';
   $("share").onclick=()=>share(); $("backHome").onclick=()=>setTab("home");
   const ts=$("toSlate"); if(ts) ts.onclick=()=>setTab("slate");
-  const tick=()=>{ const n=new Date(), m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1), s=Math.max(0,Math.floor((m-n)/1000)); const el=$("nextIn"); if(el) el.textContent="New five in "+[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(pad).join(":"); };
+  const tick=()=>{ const n=new Date(), m=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1), s=Math.max(0,Math.floor((m-n)/1000)); const el=$("nextIn"); if(el) el.textContent="Next drive in "+[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(pad).join(":"); };
   tick(); timer=setInterval(tick,1000);
 }
 function share(){
   const d=me.days[TODAY]||run.ans, {r}=rating(me), bp=beatPct();
-  const maxHit=d.find(x=>x&&x.w===5);
-  const text="COVER · "+now.toLocaleDateString(undefined,{month:"short",day:"numeric"})+"\n"+d.map(x=>SQ[colorOf(x.b)]).join("")+"  "+fmtN(todayQuizPts())+" pts\n"+
-    (maxHit?(maxHit.b>=90?"🔒 +500 hit\n":"💀 +500 missed\n"):"")+(bp?"Beat "+bp.pct+"% of players\n":"")+"Ball Knowledge "+r+" · "+tierOf(r)+(shareLink()?"\nCan you beat me? "+shareLink():"");
+  const mainR=d.filter(x=>x&&!x.c), cv=d.find(x=>x&&x.c), maxHit=mainR.find(x=>x.w===TOPW);
+  const text="COVER · "+now.toLocaleDateString(undefined,{month:"short",day:"numeric"})+"\n"+mainR.map(x=>SQ[colorOf(x.b)]).join("")+"  "+fmtN(todayQuizPts())+" pts\n"+
+    (cv?(cv.c==="two"?(cv.b>=90?"🏈 Went for two: GOOD. Day doubled\n":"💀 Went for two: stopped. Lost it all\n"):(cv.b>=90?"🦶 PAT good\n":"🦶 PAT missed\n")):"")+
+    (maxHit?(maxHit.b>=90?"🔒 +"+TOPW*100+" hit\n":"💀 +"+TOPW*100+" missed\n"):"")+(bp?"Beat "+bp.pct+"% of players\n":"")+"Ball Knowledge "+r+" · "+tierOf(r)+(shareLink()?"\nCan you beat me? "+shareLink():"");
   track("share");
   const b=$("share"); const ok=()=>{ b.textContent="Copied"; setTimeout(()=>{ b.textContent="Copy results"; },1500); };
   const fb=()=>{ $("cf").innerHTML='<textarea class="copybox" id="ct" rows="5" readonly></textarea>'; $("ct").value=text; $("ct").select(); };
@@ -891,7 +984,7 @@ function recapHTML(){
 }
 function renderHome(){
   const box=$("home"); if(!box) return;
-  const d=me.days[TODAY], done=Array.isArray(d)&&d.length===5, played=run.ans.filter(Boolean).length;
+  const d=me.days[TODAY], done=dayDone(d,TODAY), played=Math.min(NR,run.ans.slice(0,NR).filter(Boolean).length);
   const chalk='<svg class="chalk" viewBox="0 0 160 110" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">'+
     '<line x1="8" y1="70" x2="152" y2="70" stroke-dasharray="4 5"/>'+
     [24,48,72,96,120].map(x=>'<circle cx="'+x+'" cy="82" r="7"/>').join("")+
@@ -900,9 +993,9 @@ function renderHome(){
     '<path d="M96 75 C100 55 110 50 126 50"/><path d="M120 46 126 50 120 54"/>'+
     '<path d="M60 40 l10 10 M70 40 l-10 10"/><path d="M100 22 l10 10 M110 22 l-10 10"/><path d="M80 52 l8 8 M88 52 l-8 8"/></svg>';
   let todayBody;
-  if(done){ const pts=todayQuizPts(); todayBody='<div class="statusline"><b>'+fmtN(pts)+'</b><span class="pending" style="font-size:15px">/ 1,500 today · '+d.map(x=>SQ[colorOf(x.b)]).join("")+'</span></div><button class="btn primary big" id="hGo">See your results</button>'; }
-  else if(played){ todayBody='<p class="pending" style="font-size:15px">Round '+(played+1)+' of 5 is waiting. Your wagers left: '+leftW().map(w=>"+"+w*100).join(", ")+'.</p><button class="btn primary big" id="hGo">Finish today\'s five</button>'; }
-  else todayBody='<p class="pending" style="font-size:15px">Five rounds. 30 seconds each. Wager +100 to +500 on every one.</p><button class="btn primary big" id="hGo">Play today\'s five</button>';
+  if(done){ const pts=todayQuizPts(); todayBody='<div class="statusline"><b>'+fmtN(pts)+'</b><span class="pending" style="font-size:15px">pts today · '+d.filter(x=>x&&!x.c).map(x=>SQ[colorOf(x.b)]).join("")+(d.find(x=>x&&x.c)?" "+(d.find(x=>x&&x.c).b>=90?"✅":"❌"):"")+'</span></div><button class="btn primary big" id="hGo">See your results</button>'; }
+  else if(played){ todayBody='<p class="pending" style="font-size:15px">Round '+(played+1)+' of '+NR+' is waiting. Your wagers left: '+leftW().map(w=>"+"+w*100).join(", ")+'.</p><button class="btn primary big" id="hGo">Finish today\'s five</button>'; }
+  else todayBody='<p class="pending" style="font-size:15px">'+(NR===6?'Six rounds, then go for two if you dare. ':'Five rounds. ')+'30 seconds each. Wager +100 to +'+TOPW*100+'.</p><button class="btn primary big" id="hGo">Play today\'s drive</button>';
   const {r}=rating(liveMe()); const asc=[...TIERS].reverse(); const ci=asc.findIndex((x,i)=>r>=x[0]&&(i===asc.length-1||r<asc[i+1][0]));
   const lo=asc[ci][0], hi=ci<asc.length-1?asc[ci+1][0]:999, pct=Math.max(0,Math.min(100,100*(r-lo)/(hi-lo)));
   const ladder='<div class="ladder">'+[...asc].reverse().map((x,j)=>{ const i=asc.length-1-j; return '<div class="rung'+(i===ci?" cur":i<ci?" done":"")+'"><span class="th">'+x[0]+'+</span><span class="nm">'+x[1]+'</span>'+(i===ci?'<span class="you">YOU '+r+'</span>':'<span></span>')+'</div>'; }).join("")+'</div>';
@@ -914,7 +1007,7 @@ function renderHome(){
       return '<div class="mu'+(tn?" tonight":"")+'"><div class="when"><span>'+(tn?"Tonight":esc(g.start.toLocaleDateString(undefined,{weekday:"short"})))+' '+esc(fmtTime(g.start))+'</span><span class="tg">'+tag(g.label)+'</span></div>'+
         '<div class="tm'+(favA?" fav":"")+'"><b>'+esc(g.away)+'</b><small>'+esc(RECORDS[g.away]||"")+'</small><span>'+fmtML(mA)+'</span></div>'+
         '<div class="tm'+(favH?" fav":"")+'"><b>@'+esc(g.home)+'</b><small>'+esc(RECORDS[g.home]||"")+'</small><span>'+fmtML(mH)+'</span></div>'+(lineOf(g.id)?'<div class="when"><span>'+esc(lineOf(g.id))+'</span></div>':'')+'</div>'; }).join("")+'</div>':'<p class="pending">The next slate posts soon.</p>';
-  box.innerHTML='<div class="card today">'+chalk+'<div class="eyebrow"><span>Daily Five · '+esc(fmtDay(now))+'</span><span id="hCount"></span></div><h2>'+(done?"Today's final":"Today's five")+'</h2>'+todayBody+'</div>'+
+  box.innerHTML='<div class="card today">'+chalk+'<div class="eyebrow"><span>Daily Drive · '+esc(fmtDay(now))+'</span><span id="hCount"></span></div><h2>'+(done?"Today's final":"Today's drive")+'</h2>'+todayBody+'</div>'+
     recapHTML();
   $("rankBox").innerHTML='<div class="card"><div class="eyebrow"><span>Your rank</span><span>'+esc($("cRank").textContent)+'</span></div><h2>'+esc(tierOf(r))+'</h2>'+
       (next?'<div class="prog" aria-hidden="true"><i style="width:'+pct.toFixed(1)+'%"></i></div><p class="pending" style="font-size:15px;margin:0">'+(next[0]-r)+' Ball Knowledge to <b>'+esc(next[1])+'</b>. A +500 that hits is worth up to about '+Math.round(6*5*(1-(0.25+0.5*r/1000)))+'.</p>':'<p class="pending" style="font-size:15px;margin:0">Top tier. Defend it.</p>')+ladder+'</div>';
