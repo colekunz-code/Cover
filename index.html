@@ -743,7 +743,7 @@ function renderHandle(){
   const box=$("handleBox");
   if(!myRef||me.handle){ box.innerHTML=""; return; }
   box.innerHTML='<div class="card"><h2>Claim your spot</h2><p class="pending" style="font-size:15px">Pick a name for the leaderboard. Everyone sees it next to your Ball Knowledge Score.</p>'+
-    '<form class="handle" id="hf"><label for="hn" hidden>Leaderboard name</label><input id="hn" maxlength="20" placeholder="e.g. SundayScaries" autocomplete="off"><button class="btn primary" type="submit">Save</button></form></div>';
+    '<form class="handle" id="hf"><label for="hn" hidden>Leaderboard name</label><input id="hn" maxlength="20" placeholder="Nickname" autocomplete="off"><button class="btn primary" type="submit">Save</button></form></div>';
   $("hf").onsubmit=e=>{ e.preventDefault(); const v=$("hn").value.trim().replace(/\s+/g," ").slice(0,20); if(v.length<2) return; me.handle=v; push(); track("name-claimed"); renderHandle(); renderLeaderboard(); };
 }
 
