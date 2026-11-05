@@ -207,6 +207,30 @@ html,body{max-width:100%;overflow-x:hidden}
 .pickline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .pickline b{color:var(--ink)}
 .lrow .chip{min-width:96px}
+.parlay{border:1px solid color-mix(in srgb, var(--gold) 45%, transparent);border-radius:12px;padding:0;background:color-mix(in srgb, var(--gold) 6%, transparent)}
+.parlay>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;font-family:var(--display);font-weight:900;font-size:20px;text-transform:uppercase}
+.parlay>summary::-webkit-details-marker{display:none}
+.parlay>summary::after{content:"▾";color:var(--gold);font-size:16px} .parlay[open]>summary::after{content:"▴"}
+.parlay[open]{padding-bottom:12px} .parlay>*:not(summary){margin-left:14px;margin-right:14px}
+.pbadge{font:700 13px var(--mono);color:var(--gold);margin-left:auto}
+.psec{display:grid;gap:6px;margin-top:12px}
+.pst{font:700 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)} .pst.sub{margin-top:4px;color:var(--ink);letter-spacing:.06em}
+.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center}
+.prow .pn{font-weight:700;font-size:14px;min-width:0} .prow .pn small{display:block;color:var(--muted);font:600 12px var(--mono)}
+.tdgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.pleg{appearance:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font:600 13px var(--body);text-align:left;min-width:0}
+.pleg span{min-width:0;overflow-wrap:break-word;hyphens:none} .pleg b{font:700 13px var(--mono);color:var(--gold);flex:0 0 auto}
+.prow .pleg{min-width:96px}
+.pleg.cover{border-style:dashed}
+.pleg[aria-pressed="true"]{background:var(--gold-bg);border-color:var(--gold-bg);color:var(--gold-ink)} .pleg[aria-pressed="true"] b{color:var(--gold-ink)}
+.pleg:disabled{opacity:.35;cursor:default}
+.pslip{position:sticky;bottom:8px;margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--board);border:1px solid var(--gold);font-size:14px;font-variant-numeric:tabular-nums}
+.pslip .g{color:var(--gold)} .pslip .btn{padding:6px 12px;font-size:13px}
+.plegs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px} .plegs span{font-size:12px;padding:4px 8px;border-radius:999px;background:var(--line)} .plegs b{font-family:var(--mono)}
+.pres{border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;display:grid;gap:4px;font-size:14px} .pres .row{display:flex;justify-content:space-between;gap:10px} .pres.hit .tot span:last-child{color:var(--turf);font-weight:800}
+.psrc{font-size:11px;color:var(--muted);margin-top:10px!important}
+@media (max-width:420px){ .prow .pleg{min-width:84px;padding:8px} .tdgrid{grid-template-columns:1fr 1fr} }
 .lrow>span:first-child{min-width:62px}
 .chip .pay{font-size:11px;color:var(--gold);margin-left:2px}
 .chip[aria-pressed="true"] .pay{color:inherit}
@@ -413,6 +437,22 @@ const ODDS={
  "6654f093":[230,-285,"CHI -6",46.5],
  "481bb9be":[-180,150,"BUF -3.5",45.5]
 };
+// PARLAY: same-game parlay menus for featured games (primetime + one Sunday game), keyed by SLATE idPrefix.
+// pass/rush/rec rows: [player, team, line, overOdds, underOdds]. td rows: [player, team, anytimeOdds, isCoverPrice(1 = no book line posted)].
+// spreadOdds/totalOdds: [away/over, home/under]. Arrays are append-only once a game is published (picks reference row indexes).
+const PARLAY={
+ "0335b50d":{src:"Props and anytime TD: market-best prices via SportsBettingDime, Nov 5. Spread: DraftKings via VegasInsider. Moneyline and total: DraftKings via ESPN.",
+  spreadOdds:[-108,-112], totalOdds:[-110,-110],
+  pass:[["Trevor Lawrence","JAC",230.5,-115,-115],["Joe Fagnano","BAL",157.5,-115,-115]],
+  rush:[["Bhayshul Tuten","JAC",67.5,-115,-115],["Chris Rodriguez Jr.","JAC",30.5,-115,-114],["Derrick Henry","BAL",70.5,-110,-120],["Justice Hill","BAL",13.5,-115,-115]],
+  rec:[["Parker Washington","JAC",62.5,-115,-115],["Jakobi Meyers","JAC",38.5,-115,-115],["Bhayshul Tuten","JAC",12.5,-120,-110],["Zay Flowers","BAL",46.5,-115,-115],["Mark Andrews","BAL",19.5,-120,-110],["Justice Hill","BAL",13.5,-120,-110],["Derrick Henry","BAL",7.5,-110,-120]],
+  td:[["Bhayshul Tuten","JAC",108],["Chris Rodriguez Jr.","JAC",113],["Parker Washington","JAC",156],["Brenton Strange","JAC",270],["Jakobi Meyers","JAC",355],["Travis Hunter","JAC",809],
+      ["Brian Thomas Jr.","JAC",600,1],["Trevor Lawrence","JAC",900,1],["Ameer Abdullah","JAC",900,1],["LeQuint Allen Jr.","JAC",1200,1],["Nate Boerkircher","JAC",1200,1],["Tanner Koziol","JAC",1500,1],["Josh Cameron","JAC",1500,1],
+      ["Derrick Henry","BAL",144],["Zay Flowers","BAL",400],["Justice Hill","BAL",525],["Mark Andrews","BAL",567],["Ja'Kobi Lane","BAL",733],["Rashod Bateman","BAL",900],
+      ["Rasheen Ali","BAL",1000,1],["Joe Fagnano","BAL",1000,1],["Josh Cuevas","BAL",1500,1],["Matt Hibner","BAL",2000,1]]}
+};
+// PARLAY_RES: graded player lines after the game, {idPrefix:{stats:{"Player":{pass,rush,rec,td}}, out:["Player who did not play"]}}
+const PARLAY_RES={};
 const RESULTS={};
 // Completed games this season: [date, away, home, away score, home score, label]
 const PAST=[
@@ -676,6 +716,34 @@ function gamePts(g,fin,slip){ const id=g[0], pk=validPick((slip.picks||{})[id]),
   const s=pk?scorePick(pk,fin,pwOf(g)):{win:0,spread:0,total:0,sum:0}; const lp=linePts(id,g[2],g[3],fin,l);
   return {pk,l,has:!!pk||hasL,win:s.win,spread:s.spread,total:s.total,ats:lp.ats,ou:lp.ou,ml:lp.ml,atsR:lp.atsR,ouR:lp.ouR,mlR:lp.mlR,sum:s.sum+lp.ats+lp.ou+lp.ml}; }
 const hasPick=(slip,id)=>{ const l=(slip.lines||{})[id]||{}; return !!validPick((slip.picks||{})[id])||!!(l.s||l.t||l.m); };
+// ---- Parlays ----
+const PL_MAX=6;
+const dec=m=>m>0?1+m/100:1+100/(-m);
+const toAm=d=>d>=2?Math.round((d-1)*100):-Math.round(100/(d-1));
+function plLeg(gid,key){ const P=PARLAY[gid], g=SLATE_BY_ID[gid], o=oddsOf(gid); if(!P||!g) return null; const [m,a,b]=key.split(":");
+  if(m==="ml"){ if(!o) return null; return {key,m,lab:(a==="a"?g[2]:g[3])+" to win",odds:o[a==="a"?0:1]}; }
+  if(m==="sp"){ const L=lineInfo(gid,g[2],g[3]); if(!L) return null; return {key,m,lab:L.lab[a],odds:P.spreadOdds[a==="a"?0:1]}; }
+  if(m==="tot"){ if(!o) return null; return {key,m,lab:(a==="o"?"Over ":"Under ")+o[3],odds:P.totalOdds[a==="o"?0:1]}; }
+  const row=(P[m]||[])[+a]; if(!row) return null;
+  if(m==="td") return {key,m,pl:row[0],lab:row[0]+" anytime TD",odds:row[2],cover:!!row[3]};
+  const unit={pass:"pass yds",rush:"rush yds",rec:"rec yds"}[m];
+  return {key,m,pl:row[0],line:row[2],side:b,lab:row[0]+" "+(b==="o"?"over ":"under ")+row[2]+" "+unit,odds:row[b==="o"?3:4]}; }
+const plGroup=key=>{ const [m,a]=key.split(":"); return (m==="ml"||m==="sp"||m==="tot")?m:(m==="td"?"td:"+a:m+":"+a); };
+function plOdds(gid,keys){ const ls=keys.map(k=>plLeg(gid,k)).filter(Boolean); const d=ls.reduce((x,l)=>x*dec(l.odds),1); return {legs:ls,dec:d,am:ls.length>1?toAm(d):null}; }
+const plBonus=d=>Math.min(300,Math.max(10,Math.round(40*Math.log(d))));
+function plResult(gid,slip){ const keys=((slip.parlays||{})[gid])||[]; if(keys.length<2) return null; const fin=RESULTS[gid]; if(!fin) return {status:"pending",keys};
+  const g=SLATE_BY_ID[gid], R=PARLAY_RES[gid]||null, out=[]; let anyProp=false;
+  for(const k of keys){ const L=plLeg(gid,k); if(!L) continue; let r;
+    if(L.m==="ml"){ const w=fin[0]>fin[1]?"a":fin[1]>fin[0]?"h":""; r=!w?"void":(k.endsWith(":"+w)?"hit":"miss"); }
+    else if(L.m==="sp"){ const lp=linePts(gid,g[2],g[3],fin,{s:k.split(":")[1]}); r=lp.atsR==="push"?"void":lp.atsR; }
+    else if(L.m==="tot"){ const T=fin[0]+fin[1], o=oddsOf(gid); r=T===o[3]?"void":((k.endsWith(":o")?T>o[3]:T<o[3])?"hit":"miss"); }
+    else { anyProp=true; if(!R){ r="pending"; } else if((R.out||[]).includes(L.pl)){ r="void"; } else { const s=(R.stats||{})[L.pl]||{};
+      if(L.m==="td") r=s.td?"hit":"miss"; else { const v=+(s[L.m]||0); r=(L.side==="o"?v>L.line:v<L.line)?"hit":"miss"; } } }
+    out.push({...L,r}); }
+  if(out.some(l=>l.r==="miss")) return {status:"miss",legs:out,keys};
+  if(out.some(l=>l.r==="pending")) return {status:"pending",legs:out,keys};
+  const live=out.filter(l=>l.r==="hit"); if(!live.length) return {status:"void",legs:out,keys};
+  const d=live.reduce((x,l)=>x*dec(l.odds),1); return {status:"hit",legs:out,keys,dec:d,bonus:plBonus(d)}; }
 function gradeQ(q, ans){
   if(ans==null||ans==="") return 0;
   if(q.ans!=null){ const v=+ans; if(!isFinite(v)) return 0; return Math.round(100*Math.max(0,1-Math.abs(v-q.ans)/q.tol)); }
@@ -695,6 +763,7 @@ function events(slip){
     if(!g||!fin||!hasPick(slip,gid)) continue;
     ev.push({t:g[1],perf:Math.min(1,gamePts(g,fin,slip).sum/100),w:Math.min(5,Math.max(1,+((slip.wagers||{})[gid])||1)),kind:"s"});
   }
+  for(const gid of Object.keys(slip.parlays||{})){ const g=SLATE_BY_ID[gid]; if(!g) continue; const pr=plResult(gid,slip); if(pr&&pr.status==="hit") ev.push({t:g[1]+"p",perf:1,w:2,kind:"s"}); }
   return ev.sort((a,b)=>a.t<b.t?-1:1);
 }
 function rating(slip){
@@ -707,8 +776,8 @@ function streakOf(slip){ const d=new Date(now); let s=0; const has=k=>dayDone((s
   while(has(keyOf(d))){ s++; d.setDate(d.getDate()-1); } return s; }
 
 // ---- My slip ----
-let me=store.get("cover-me",null)||{handle:(store.get("cover-slip",{}).handle||""),days:{},picks:{},lines:{},wagers:{},submitted:{}};
-["days","picks","lines","wagers","submitted"].forEach(k=>{ if(!me[k]||typeof me[k]!=="object") me[k]={}; });
+let me=store.get("cover-me",null)||{handle:(store.get("cover-slip",{}).handle||""),days:{},picks:{},lines:{},parlays:{},wagers:{},submitted:{}};
+["days","picks","lines","parlays","wagers","submitted"].forEach(k=>{ if(!me[k]||typeof me[k]!=="object") me[k]={}; });
 // A day played under the old 5-round format on the switch day is kept as finished history (key TODAY+"~1"), and today starts fresh.
 function migrateOld(){ const d=me.days[TODAY]; if(TF.conv&&Array.isArray(d)&&d.filter(Boolean).length<TOTAL_R&&!d.some(x=>x&&x.c)){ me.days[TODAY+"~1"]=d; delete me.days[TODAY]; return true; } return false; }
 migrateOld();
@@ -741,7 +810,7 @@ async function push(){
     db=d; myRef=db.collection("slips").doc(uid);
     const snap=await myRef.get();
     if(snap.exists){ const s=snap.data()||{}; me.handle=me.handle||String(s.handle||"");
-      ["days","picks","lines","wagers","submitted"].forEach(k=>{ me[k]={...(s[k]||{}),...me[k]}; }); const mig=migrateOld(); saveLocal(); if(mig) setTimeout(()=>push(),0); }
+      ["days","picks","lines","parlays","wagers","submitted"].forEach(k=>{ me[k]={...(s[k]||{}),...me[k]}; }); const mig=migrateOld(); saveLocal(); if(mig) setTimeout(()=>push(),0); }
     db.collection("slips").limit(1000).onSnapshot(qs=>{ clearTimeout(t); social="on"; others=qs.docs.filter(x=>x.exists).map(x=>({id:x.id,...(x.data()||{})})); renderSocial(); },
       ()=>{ clearTimeout(t); social="off"; renderSocial(); });
     renderBoard(); renderHandle();
@@ -750,7 +819,7 @@ async function push(){
 
 // ---- Board ----
 function todayQuizPts(){ const d=me.days[TODAY]; return dayScore(Array.isArray(d)?d:run.ans); }
-function todaySlatePts(){ return games.reduce((a,x)=>{ if(!x.fin||!hasPick(me,x.id)) return a; return a+gamePts(SLATE_BY_ID[x.id],x.fin,me).sum*(+me.wagers[x.id]||1); },0); }
+function todaySlatePts(){ return games.reduce((a,x)=>{ const pr=plResult(x.id,me); const pb=pr&&pr.status==="hit"?pr.bonus:0; if(!x.fin||!hasPick(me,x.id)) return a+pb; return a+pb+gamePts(SLATE_BY_ID[x.id],x.fin,me).sum*(+me.wagers[x.id]||1); },0); }
 function liveMe(){ if(Array.isArray(me.days[TODAY])) return me; const part=run.ans.filter(Boolean).map(a=>({b:a.b,w:a.w,c:a.c})); return part.length?{...me,days:{...me.days,[TODAY]:part}}:me; }
 function renderBoard(){
   const {r,n}=rating(liveMe());
@@ -928,6 +997,10 @@ function renderSlate(){
     ["a","h"].forEach(side=>{ const el=$("in-"+side+"-"+x.id); if(!el) return;
       el.oninput=()=>{ const v=el.value.replace(/\D/g,"").slice(0,2); el.value=v; const p=me.picks[x.id]?[...me.picks[x.id]]:["",""]; p[side==="a"?0:1]=v; me.picks[x.id]=p;
         if(me.submitted[TODAY]) me.submitted[TODAY]="edited"; saveLocal(); updatePickLine(x); renderSlateFoot(); }; });
+    $("slate").querySelectorAll('.pleg[data-pg="'+x.id+'"]').forEach(c=>c.onclick=()=>{ if(c.disabled) return; const k=c.dataset.k; let s=[...((me.parlays||{})[x.id]||[])];
+      if(s.includes(k)) s=s.filter(z=>z!==k); else { s=s.filter(z=>plGroup(z)!==plGroup(k)); if(s.length<PL_MAX) s.push(k); }
+      me.parlays={...(me.parlays||{}),[x.id]:s}; if(me.submitted[TODAY]) me.submitted[TODAY]="edited"; saveLocal(); const y=window.scrollY; renderSlate(); window.scrollTo&&window.scrollTo({top:y}); });
+    $("slate").querySelectorAll('[data-pclear="'+x.id+'"]').forEach(c=>c.onclick=()=>{ me.parlays={...(me.parlays||{}),[x.id]:[]}; saveLocal(); const y=window.scrollY; renderSlate(); window.scrollTo&&window.scrollTo({top:y}); });
     $("slate").querySelectorAll('.lchip[data-lg="'+x.id+'"]').forEach(c=>c.onclick=()=>{ if(c.disabled) return; const k=c.dataset.k, v=c.dataset.v; const l={...(me.lines[x.id]||{})}; l[k]=l[k]===v?"":v; me.lines[x.id]=l; if(me.submitted[TODAY]) me.submitted[TODAY]="edited"; saveLocal(); renderSlate(); });
     $("slate").querySelectorAll('.chip[data-g="'+x.id+'"]').forEach(c=>c.onclick=()=>{ if(c.disabled) return; me.wagers[x.id]=+c.dataset.w; if(me.submitted[TODAY]) me.submitted[TODAY]="edited"; saveLocal(); renderSlate(); });
   });
@@ -950,8 +1023,29 @@ function gameHTML(x){
     else foot='<div class="result">'+fin+'<p class="pending">No pick made.</p></div>';
   } else if(locked) foot='<p class="pending"><span class="lock">Locked</span> · Waiting for the final.</p>';
   return '<article class="game"><div class="ghead"><span>'+esc(fmtTime(x.start))+(lineOf(x.id)?' · '+esc(lineOf(x.id)):'')+'</span>'+(x.label?'<span class="tag">'+esc(x.label)+'</span>':'')+'</div>'+
-    row("a",x.away,mlA,p[0])+row("h",x.home,mlH,p[1])+'<div class="pickline" id="pl-'+x.id+'">'+pickLineText(x)+'</div>'+lines+chips+'<div class="crowd" id="cr-'+x.id+'"></div>'+foot+'</article>';
+    row("a",x.away,mlA,p[0])+row("h",x.home,mlH,p[1])+'<div class="pickline" id="pl-'+x.id+'">'+pickLineText(x)+'</div>'+lines+chips+parlayHTML(x,locked)+'<div class="crowd" id="cr-'+x.id+'"></div>'+foot+'</article>';
 }
+function parlayHTML(x,locked){ const P=PARLAY[x.id]; if(!P) return '';
+  const sel=(me.parlays||{})[x.id]||[], full=sel.length>=PL_MAX, pr=plResult(x.id,me), g=SLATE_BY_ID[x.id];
+  const b=(key,lab,odds,extra)=>{ const on=sel.includes(key); return '<button class="pleg'+(extra||'')+'" data-pg="'+x.id+'" data-k="'+esc(key)+'" aria-pressed="'+on+'"'+(locked||(full&&!on)?" disabled":"")+'><span>'+esc(lab)+'</span><b>'+fmtML(odds)+'</b></button>'; };
+  const sec=(t,h)=>'<div class="psec"><div class="pst">'+t+'</div><div class="pgrid">'+h+'</div></div>';
+  const o=oddsOf(x.id), L=lineInfo(x.id,x.away,x.home);
+  const prop=(m,unit)=>(P[m]||[]).map((r,i)=>'<div class="prow"><span class="pn">'+esc(r[0])+' <small>'+esc(r[1])+' · '+r[2]+' '+unit+'</small></span>'+b(m+":"+i+":o","Over",r[3])+b(m+":"+i+":u","Under",r[4])+'</div>').join("");
+  const tds=['a','h'].map(s=>{ const tm=s==="a"?g[2]:g[3]; return '<div class="pst sub">'+esc(TEAMS[tm]||tm)+'</div><div class="tdgrid">'+(P.td||[]).map((r,i)=>r[1]===tm?b("td:"+i,r[0],r[2],r[3]?" cover":""):"").join("")+'</div>'; }).join("");
+  const po=plOdds(x.id,sel);
+  let foot='';
+  if(pr&&pr.status!=="pending"){ foot='<div class="pres '+pr.status+'">'+pr.legs.map(l=>'<div class="row"><span>'+esc(l.lab)+' '+fmtML(l.odds)+'</span><span>'+(l.r==="hit"?"✓":l.r==="miss"?"✗":l.r==="void"?"void":"…")+'</span></div>').join("")+
+      '<div class="row tot"><span>'+(pr.status==="hit"?'Parlay hit · '+fmtML(toAm(pr.dec)):pr.status==="miss"?'Parlay missed. No points lost.':'All legs voided.')+'</span><span>'+(pr.status==="hit"?'+'+pr.bonus:'0')+'</span></div></div>'; }
+  return '<details class="parlay"'+(sel.length?' open':'')+'><summary><span>Build a parlay</span><span class="pbadge">'+(sel.length?sel.length+' leg'+(sel.length>1?'s':'')+(po.am!=null?' · '+fmtML(po.am):''):'Up to 6 legs')+'</span></summary>'+
+    '<p class="pending" style="margin:0">Pick 2 to 6 legs. If every leg hits you earn bonus points (more for longer odds, max 300). If it misses, nothing is lost. Free to play, no real money.</p>'+
+    sec("Game",(o?b("ml:a",x.away+" ML",o[0])+b("ml:h",x.home+" ML",o[1]):'')+(L?b("sp:a",L.lab.a,P.spreadOdds[0])+b("sp:h",L.lab.h,P.spreadOdds[1]):'')+(o?b("tot:o","Over "+o[3],P.totalOdds[0])+b("tot:u","Under "+o[3],P.totalOdds[1]):''))+
+    '<div class="psec"><div class="pst">QB passing yards</div>'+prop("pass","pass yds")+'</div>'+
+    '<div class="psec"><div class="pst">Rushing yards</div>'+prop("rush","rush yds")+'</div>'+
+    '<div class="psec"><div class="pst">Receiving yards</div>'+prop("rec","rec yds")+'</div>'+
+    '<div class="psec"><div class="pst">Anytime touchdown</div>'+tds+'<p class="pending" style="margin:0">Dashed = no sportsbook posted a price, so it\'s a Cover longshot price.</p></div>'+
+    '<div class="pslip"><div><b>'+sel.length+'/'+PL_MAX+' legs</b>'+(po.am!=null?' · <span class="g">'+fmtML(po.am)+'</span> · hits pay <b class="g">+'+plBonus(po.dec)+'</b> pts':' · add at least 2')+'</div>'+(sel.length&&!locked?'<button class="btn" data-pclear="'+x.id+'">Clear</button>':'')+'</div>'+
+    (sel.length?'<div class="plegs">'+po.legs.map(l=>'<span>'+esc(l.lab)+' <b>'+fmtML(l.odds)+'</b></span>').join("")+'</div>':'')+
+    foot+'<p class="psrc">'+esc(P.src)+'</p></details>'; }
 function breakdown(gp,L){ let h='';
   if(gp.pk) h+='<div class="row"><span>Score call: winner · margin · total</span><span>'+gp.win+' · '+gp.spread+' · '+gp.total+'</span></div>';
   if(gp.l&&gp.l.m&&L) h+='<div class="row"><span>Moneyline: '+esc(L.ml[gp.l.m])+' '+RES[gp.mlR]+'</span><span>'+gp.ml+'</span></div>';
@@ -963,7 +1057,7 @@ function pickLineText(x){ const pk=validPick(me.picks[x.id]); if(!pk) return '<s
 function updatePickLine(x){ const el=$("pl-"+x.id); if(el) el.innerHTML=pickLineText(x); }
 function renderSlateFoot(){
   const box=$("slateFoot"); if(!box) return; const open=games.filter(x=>!isLocked(x)).length, sub=me.submitted[TODAY];
-  const any=games.some(x=>hasPick(me,x.id)&&!isLocked(x));
+  const any=games.some(x=>(hasPick(me,x.id)||((me.parlays||{})[x.id]||[]).length>=2)&&!isLocked(x));
   box.innerHTML=(open?'<div class="btns"><button class="btn primary big" id="subBtn"'+(any?"":" disabled")+'>'+(sub===true?"Slip locked ✓":sub?"Update my slip":"Lock my slip")+'</button></div>':'')+
     '<p class="msg" style="margin-top:8px">'+(open?(sub===true?"Locked. You can still change picks until each kickoff.":"Lock your slip to see how the crowd called each game."):"All games are locked. Points post as finals come in.")+'</p>';
   const b=$("subBtn"); if(b) b.onclick=()=>{ me.submitted[TODAY]=true; push(); track("slip-locked"); renderSlateFoot(); renderCrowd(); };
@@ -1005,8 +1099,10 @@ function recapHTML(){
         '<div class="row"><span>'+esc(line)+' (+'+w*100+')</span><span class="pts">'+fmtN(pts)+'</span></div>';
       return '<div class="rg'+(hit?" hit":"")+'"><div class="top"><b>'+esc(g[2])+' '+f[0]+' – '+f[1]+' '+esc(g[3])+'</b><span class="pending">'+(aw?esc(aw)+" won":"Tie")+'</span></div>'+body+'</div>'; }
     return '<div class="rg"><div class="top"><b>'+esc(g[2])+' '+f[0]+' – '+f[1]+' '+esc(g[3])+'</b><span class="pending">No pick</span></div></div>'; }).join("");
+  gs.forEach(g=>{ const pr=plResult(g[0],me); if(pr&&pr.status!=="pending"){ picked++; if(pr.status==="hit"){ hits++; tot+=pr.bonus; } } });
+  const prl=gs.map(g=>{ const pr=plResult(g[0],me); if(!pr||pr.status==="pending") return ""; return '<div class="rg'+(pr.status==="hit"?" hit":"")+'"><div class="top"><b>'+esc(g[2])+' @ '+esc(g[3])+' parlay</b><span class="pending">'+pr.legs.length+' legs</span></div>'+pr.legs.map(l=>'<div class="row"><span>'+esc(l.lab)+'</span><span>'+(l.r==="hit"?"✓":l.r==="miss"?"✗":"void")+'</span></div>').join("")+'<div class="row"><span>'+(pr.status==="hit"?"Cashed at "+fmtML(toAm(pr.dec))+". 🔥":pr.status==="miss"?"So close. No points lost.":"Voided.")+'</span><span class="pts">'+(pr.status==="hit"?"+"+pr.bonus:"0")+'</span></div></div>'; }).join("");
   const sum=picked?'<div class="sum"><span class="pending">'+hits+' of '+picked+' games cashed something · slate total</span><b>'+fmtN(tot)+'</b></div>':'<p class="pending" style="margin:0">You sat this one out. Picks open again next game day.</p>';
-  return '<div class="card recap"><div class="eyebrow"><span>Slate recap · '+esc(fmtDay(day))+'</span><span>'+gs.length+' final'+(gs.length===1?"":"s")+'</span></div><h2>'+esc(when)+' results</h2>'+rows+sum+'</div>';
+  return '<div class="card recap"><div class="eyebrow"><span>Slate recap · '+esc(fmtDay(day))+'</span><span>'+gs.length+' final'+(gs.length===1?"":"s")+'</span></div><h2>'+esc(when)+' results</h2>'+rows+prl+sum+'</div>';
 }
 function renderHome(){
   const box=$("home"); if(!box) return;
