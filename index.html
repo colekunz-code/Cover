@@ -193,9 +193,12 @@ html,body{max-width:100%;overflow-x:hidden}
 .pickline{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .pickline b{color:var(--ink)}
 .lrow .chip{min-width:96px}
+.lrow>span:first-child{min-width:62px}
+.chip .pay{font-size:11px;color:var(--gold);margin-left:2px}
+.chip[aria-pressed="true"] .pay{color:inherit}
 .chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
 .chip{appearance:none;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:4px 10px;font:700 13px var(--mono);cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--gold-bg);color:var(--gold-ink);border-color:var(--gold-bg)}
 .chip.max{border-color:var(--gold)}
 .chip:disabled{opacity:.3;cursor:default}
 .crowd{display:grid;gap:6px;font-size:13px}
@@ -580,15 +583,17 @@ function scorePick(pick, fin, pWin){
   return {win,spread,total,sum:win+spread+total};
 }
 function lineInfo(id,away,home){ const o=oddsOf(id); if(!o) return null; const m=String(o[2]).match(/^([A-Z]+)\s*-?\s*([\d.]+)/); if(!m) return null;
-  const fav=m[1], n=+m[2], favA=fav===away; return {fav,n,favA,tot:+o[3],lab:{a:away+" "+(n?(favA?"-":"+")+n:"PK"),h:home+" "+(n?(favA?"+":"-")+n:"PK"),o:"Over "+o[3],u:"Under "+o[3]}}; }
-function linePts(id,away,home,fin,l){ const L=lineInfo(id,away,home), r={ats:0,ou:0,atsR:"",ouR:""}; if(!L||!l) return r;
+  const fav=m[1], n=+m[2], favA=fav===away; return {fav,n,favA,tot:+o[3],lab:{a:away+" "+(n?(favA?"-":"+")+n:"PK"),h:home+" "+(n?(favA?"+":"-")+n:"PK"),o:"Over "+o[3],u:"Under "+o[3]},ml:{a:away+" "+fmtML(o[0]),h:home+" "+fmtML(o[1])},mlp:{a:mlPts(id,0),h:mlPts(id,1)}}; }
+function mlPts(id,side){ const g=SLATE_BY_ID[id]; const pw=g?pwOf(g):null; if(!pw) return 30; return Math.min(90,Math.max(5,Math.round(15/(pw[side]/100)))); }
+function linePts(id,away,home,fin,l){ const L=lineInfo(id,away,home), r={ats:0,ou:0,ml:0,atsR:"",ouR:"",mlR:""}; if(!L||!l) return r;
+  if(l.m==="a"||l.m==="h"){ const w=fin[0]>fin[1]?"a":fin[1]>fin[0]?"h":""; r.mlR=!w?"push":w===l.m?"hit":"miss"; r.ml=!w?10:w===l.m?L.mlp[l.m]:0; }
   if(l.s==="a"||l.s==="h"){ const fm=L.favA?fin[0]-fin[1]:fin[1]-fin[0]; const pickFav=(l.s==="a")===L.favA; const d=pickFav?fm-L.n:L.n-fm; r.atsR=d>0?"hit":d===0?"push":"miss"; r.ats=d>0?30:d===0?10:0; }
   if(l.t==="o"||l.t==="u"){ const T=fin[0]+fin[1]; const d=l.t==="o"?T-L.tot:L.tot-T; r.ouR=d>0?"hit":d===0?"push":"miss"; r.ou=d>0?30:d===0?10:0; }
   return r; }
-function gamePts(g,fin,slip){ const id=g[0], pk=validPick((slip.picks||{})[id]), l=(slip.lines||{})[id]||null; const hasL=!!(l&&(l.s||l.t));
+function gamePts(g,fin,slip){ const id=g[0], pk=validPick((slip.picks||{})[id]), l=(slip.lines||{})[id]||null; const hasL=!!(l&&(l.s||l.t||l.m));
   const s=pk?scorePick(pk,fin,pwOf(g)):{win:0,spread:0,total:0,sum:0}; const lp=linePts(id,g[2],g[3],fin,l);
-  return {pk,l,has:!!pk||hasL,win:s.win,spread:s.spread,total:s.total,ats:lp.ats,ou:lp.ou,atsR:lp.atsR,ouR:lp.ouR,sum:s.sum+lp.ats+lp.ou}; }
-const hasPick=(slip,id)=>{ const l=(slip.lines||{})[id]||{}; return !!validPick((slip.picks||{})[id])||!!(l.s||l.t); };
+  return {pk,l,has:!!pk||hasL,win:s.win,spread:s.spread,total:s.total,ats:lp.ats,ou:lp.ou,ml:lp.ml,atsR:lp.atsR,ouR:lp.ouR,mlR:lp.mlR,sum:s.sum+lp.ats+lp.ou+lp.ml}; }
+const hasPick=(slip,id)=>{ const l=(slip.lines||{})[id]||{}; return !!validPick((slip.picks||{})[id])||!!(l.s||l.t||l.m); };
 function gradeQ(q, ans){
   if(ans==null||ans==="") return 0;
   if(q.ans!=null){ const v=+ans; if(!isFinite(v)) return 0; return Math.round(100*Math.max(0,1-Math.abs(v-q.ans)/q.tol)); }
@@ -798,7 +803,7 @@ const isLocked=x=>Date.now()>=x.start.getTime();
 const usedSlate=(w,except)=>games.filter(x=>x.id!==except&&+me.wagers[x.id]===w).length;
 function renderSlate(){
   const box=$("slate"); if(!LIVE){ box.innerHTML=""; return; }
-  box.innerHTML='<div class="card"><h2>Tonight\'s Slate</h2><p class="pending" style="font-size:15px">Real games, real odds. Call the final score, take a side against the spread, hit the over/under, or do all three. Then wager on it. You get one +500, one +400 and one +300 for the slate; +100 and +200 are unlimited. Picks lock at kickoff.</p></div>'+
+  box.innerHTML='<div class="card"><h2>Tonight\'s Slate</h2><p class="pending" style="font-size:15px">Real games, real odds. Pick the winner on the moneyline, take a side against the spread, hit the over/under, call the final score, or do it all. Then wager on it. You get one +500, one +400 and one +300 for the slate; +100 and +200 are unlimited. Picks lock at kickoff.</p></div>'+
     '<div class="games">'+games.map(gameHTML).join("")+'</div><div id="slateFoot"></div>';
   games.forEach(x=>{
     ["a","h"].forEach(side=>{ const el=$("in-"+side+"-"+x.id); if(!el) return;
@@ -818,8 +823,8 @@ function gameHTML(x){
       '<input type="text" inputmode="numeric" id="in-'+side+'-'+x.id+'" aria-label="'+esc(TEAMS[abbr]||abbr)+' points" value="'+esc(val==null?"":val)+'" placeholder="0">')+'</div>';
   const chips='<div class="chips"><span>Wager</span>'+WAGERS.map(v=>{ const capped=SLATE_CAPS[v]&&usedSlate(v,x.id)>=SLATE_CAPS[v]; return '<button class="chip'+(v===5?" max":"")+'" data-g="'+x.id+'" data-w="'+v+'" aria-pressed="'+(w===v)+'"'+(locked||capped?" disabled":"")+'>+'+v*100+'</button>'; }).join("")+'</div>';
   const L=lineInfo(x.id,x.away,x.home), ml=me.lines[x.id]||{};
-  const lrow=(k,lab,opts)=>'<div class="chips lrow"><span>'+lab+'</span>'+opts.map(v=>'<button class="chip lchip" data-lg="'+x.id+'" data-k="'+k+'" data-v="'+v+'" aria-pressed="'+(ml[k]===v)+'"'+(locked?" disabled":"")+'>'+esc(L.lab[v])+'</button>').join("")+'</div>';
-  const lines=L?lrow("s","Spread",["a","h"])+lrow("t","Total",["o","u"]):'';
+  const lrow=(k,lab,opts,txt)=>'<div class="chips lrow"><span>'+lab+'</span>'+opts.map(v=>'<button class="chip lchip" data-lg="'+x.id+'" data-k="'+k+'" data-v="'+v+'" aria-pressed="'+(ml[k]===v)+'"'+(locked?" disabled":"")+'>'+txt(v)+'</button>').join("")+'</div>';
+  const lines=L?lrow("m","Winner",["a","h"],v=>esc(L.ml[v])+' <small class="pay">'+L.mlp[v]+'</small>')+lrow("s","Spread",["a","h"],v=>esc(L.lab[v]))+lrow("t","Total",["o","u"],v=>esc(L.lab[v]))+'<p class="pending" style="margin:0">Moneyline pays more for the underdog (the small number is points if it hits). Spread or total hit: 30 each.</p>':'';
   let foot='';
   if(showFinal){ const gp=gamePts(SLATE_BY_ID[x.id],x.fin,me); const fin='<div class="row"><span>Final</span><span>'+x.away+' '+x.fin[0]+' – '+x.fin[1]+' '+x.home+'</span></div>';
     if(gp.has){ foot='<div class="result">'+fin+breakdown(gp,L)+'<div class="row tot"><span>'+gp.sum+' × +'+w*100+'</span><span>'+fmtN(gp.sum*w)+'</span></div></div>'; }
@@ -830,6 +835,7 @@ function gameHTML(x){
 }
 function breakdown(gp,L){ let h='';
   if(gp.pk) h+='<div class="row"><span>Score call: winner · margin · total</span><span>'+gp.win+' · '+gp.spread+' · '+gp.total+'</span></div>';
+  if(gp.l&&gp.l.m&&L) h+='<div class="row"><span>Moneyline: '+esc(L.ml[gp.l.m])+' '+RES[gp.mlR]+'</span><span>'+gp.ml+'</span></div>';
   if(gp.l&&gp.l.s&&L) h+='<div class="row"><span>Spread: '+esc(L.lab[gp.l.s])+' '+RES[gp.atsR]+'</span><span>'+gp.ats+'</span></div>';
   if(gp.l&&gp.l.t&&L) h+='<div class="row"><span>Total: '+esc(L.lab[gp.l.t])+' '+RES[gp.ouR]+'</span><span>'+gp.ou+'</span></div>';
   return h; }
@@ -873,7 +879,7 @@ function recapHTML(){
   const rows=gs.map(g=>{ const f=RESULTS[g[0]], w=+me.wagers[g[0]]||1, aw=f[0]>f[1]?g[2]:f[1]>f[0]?g[3]:"";
     const s=gamePts(g,f,me), L=lineInfo(g[0],g[2],g[3]);
     let body;
-    if(s.has){ picked++; const pts=s.sum*w; tot+=pts; const hit=s.win>0||s.atsR==="hit"||s.ouR==="hit"; if(hit) hits++;
+    if(s.has){ picked++; const pts=s.sum*w; tot+=pts; const hit=s.win>0||s.atsR==="hit"||s.ouR==="hit"||s.mlR==="hit"; if(hit) hits++;
       const line=s.sum>=110?"Called it. Frame this one.":s.sum>=60?"Cashed. Nice read.":hit?"Some of it hit. We'll take it.":s.sum>=20?"Close, but the book wins this one.":"Ouch. Delete this from your phone.";
       body=(s.pk?'<div class="row"><span>Your score call</span><span>'+esc(g[2])+' '+s.pk[0]+' – '+s.pk[1]+' '+esc(g[3])+'</span></div>':'')+
         breakdown(s,L)+
