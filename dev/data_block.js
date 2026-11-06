@@ -1,7 +1,7 @@
 // Real data: NFL 2026 regular season, from the SportRadar feed. Updated 2026-11-03.
-const DATA_AS_OF="Nov 3, 2026";
+const DATA_AS_OF="Nov 6, 2026";
 const TEAMS={ARI:"Cardinals",ATL:"Falcons",BAL:"Ravens",BUF:"Bills",CAR:"Panthers",CHI:"Bears",CIN:"Bengals",CLE:"Browns",DAL:"Cowboys",DEN:"Broncos",DET:"Lions",GB:"Packers",HOU:"Texans",IND:"Colts",JAC:"Jaguars",KC:"Chiefs",LA:"Rams",LAC:"Chargers",LV:"Raiders",MIA:"Dolphins",MIN:"Vikings",NE:"Patriots",NO:"Saints",NYG:"Giants",NYJ:"Jets",PHI:"Eagles",PIT:"Steelers",SEA:"Seahawks",SF:"49ers",TB:"Buccaneers",TEN:"Titans",WAS:"Commanders"};
-const RECORDS={NYG:"4-2",WAS:"2-4",PHI:"2-6",DAL:"3-5",NO:"2-5",TB:"3-5",ATL:"3-5",CAR:"3-4",LA:"4-4",SEA:"4-4",ARI:"3-5",SF:"6-1",MIN:"6-1",CHI:"6-2",GB:"5-3",DET:"5-2",LAC:"0-7",KC:"5-2",LV:"4-4",DEN:"6-2",MIA:"1-6",NYJ:"2-6",BUF:"6-1",NE:"5-3",IND:"2-6",HOU:"2-5",TEN:"1-7",JAC:"5-2",CIN:"5-2",PIT:"6-2",CLE:"5-3",BAL:"4-4"};
+const RECORDS={NYG:"4-2",WAS:"2-4",PHI:"2-6",DAL:"3-5",NO:"2-5",TB:"3-5",ATL:"3-5",CAR:"3-4",LA:"4-4",SEA:"4-4",ARI:"3-5",SF:"6-1",MIN:"6-1",CHI:"6-2",GB:"5-3",DET:"5-2",LAC:"0-7",KC:"5-2",LV:"4-4",DEN:"6-2",MIA:"1-6",NYJ:"2-6",BUF:"6-1",NE:"5-3",IND:"2-6",HOU:"2-5",TEN:"1-7",JAC:"6-2",CIN:"5-2",PIT:"6-2",CLE:"5-3",BAL:"4-5"};
 // Upcoming games: [id, kickoff UTC, away, home, away win %, home win %, label]
 const SLATE=[
  ["0335b50d","2026-11-06T01:15:00Z","JAC","BAL",82.3,17.7,"Thursday Night Football"],
@@ -54,8 +54,8 @@ const PARLAY={
       ["Rasheen Ali","BAL",1000,1],["Joe Fagnano","BAL",1000,1],["Josh Cuevas","BAL",1500,1],["Matt Hibner","BAL",2000,1]]}
 };
 // PARLAY_RES: graded player lines after the game, {idPrefix:{stats:{"Player":{pass,rush,rec,td}}, out:["Player who did not play"]}}
-const PARLAY_RES={};
-const RESULTS={};
+const PARLAY_RES={"0335b50d":{src:"Final box score lines via Rotowire/footballdb/CBS (team totals checked vs feed), Nov 6",stats:{"Trevor Lawrence": {"pass": 242, "rush": -1, "rec": 0, "td": false}, "Joe Fagnano": {"pass": 60, "rush": 13, "rec": 0, "td": false}, "Bhayshul Tuten": {"pass": 0, "rush": 29, "rec": 0, "td": true}, "Chris Rodriguez Jr.": {"pass": 0, "rush": 19, "rec": 13, "td": true}, "Ameer Abdullah": {"pass": 0, "rush": 30, "rec": 0, "td": false}, "LeQuint Allen Jr.": {"pass": 0, "rush": 0, "rec": 0, "td": false}, "Parker Washington": {"pass": 0, "rush": 0, "rec": 61, "td": true}, "Jakobi Meyers": {"pass": 0, "rush": 0, "rec": 65, "td": false}, "Brenton Strange": {"pass": 0, "rush": 0, "rec": 22, "td": false}, "Nate Boerkircher": {"pass": 0, "rush": 0, "rec": 61, "td": false}, "Tanner Koziol": {"pass": 0, "rush": 0, "rec": 15, "td": false}, "Josh Cameron": {"pass": 0, "rush": 0, "rec": 6, "td": false}, "Travis Hunter": {"pass": 0, "rush": 0, "rec": -1, "td": false}, "Brian Thomas Jr.": {"pass": 0, "rush": 0, "rec": 0, "td": false}, "Derrick Henry": {"pass": -3, "rush": 57, "rec": 0, "td": false}, "Justice Hill": {"pass": 0, "rush": 85, "rec": 7, "td": true}, "Mark Andrews": {"pass": 0, "rush": 0, "rec": 19, "td": false}, "Zay Flowers": {"pass": 0, "rush": 17, "rec": 6, "td": false}, "Rashod Bateman": {"pass": 0, "rush": 0, "rec": 6, "td": false}, "Matt Hibner": {"pass": 0, "rush": 0, "rec": 5, "td": false}, "Ja'Kobi Lane": {"pass": 0, "rush": 0, "rec": 0, "td": false}, "Rasheen Ali": {"pass": 0, "rush": 0, "rec": 0, "td": false}, "Josh Cuevas": {"pass": 0, "rush": 0, "rec": 0, "td": false}},out:[]}};
+const RESULTS={"0335b50d":[33,10]};
 // Completed games this season: [date, away, home, away score, home score, label]
 const PAST=[
  ["2026-09-10","SF","LA",27,7,"Thursday Night"],["2026-09-13","GB","MIN",22,39,""],["2026-09-13","BUF","HOU",36,31,""],["2026-09-13","ATL","PIT",13,20,""],
@@ -73,6 +73,7 @@ const PAST=[
  ["2026-10-29","CAR","GB",19,27,"Thursday Night"],["2026-11-01","IND","JAC",7,42,""],["2026-11-01","TEN","CIN",36,43,""],["2026-11-01","CLE","PIT",6,27,""],
  ["2026-11-01","MIN","DET",15,19,""],["2026-11-01","ATL","TB",0,16,""],["2026-11-01","ARI","DAL",33,30,""],["2026-11-01","LV","NYJ",38,33,""],
  ["2026-11-01","BAL","BUF",10,36,""],["2026-11-01","LAC","LA",9,24,""],["2026-11-01","NE","MIA",24,19,""],["2026-11-01","KC","DEN",24,28,""],
- ["2026-11-01","PHI","WAS",10,27,"Sunday Night"],["2026-11-02","CHI","SEA",34,17,"Monday Night"]
+ ["2026-11-01","PHI","WAS",10,27,"Sunday Night"],["2026-11-02","CHI","SEA",34,17,"Monday Night"],
+["2026-11-05","JAC","BAL",33,10,"Thursday Night"]
 ];
 
